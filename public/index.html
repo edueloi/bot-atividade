@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Administrativo - Bot Clínica</title>
+    <title>Painel Administrativo - Bot Clinica</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+        :root {
+            --bg: #eef2f7;
+            --panel: #ffffff;
+            --panel-muted: #f8fafc;
+            --text: #0f172a;
+            --text-muted: #5b6474;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --border: #e2e8f0;
+            --shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,112 +26,240 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Source Sans 3', sans-serif;
+            background: #eef2f7;
+            color: var(--text);
             min-height: 100vh;
-            padding: 20px;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .app {
+            min-height: 100vh;
+            background: transparent;
         }
 
-        .header {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: #666;
-        }
-
-        .tabs {
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 240px;
+            height: 100vh;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 26px 18px;
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-mark {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #2563eb 0%, #38bdf8 100%);
+            display: grid;
+            place-items: center;
+            color: white;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .brand-subtitle {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .tab-button {
-            background: white;
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
             border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
+            border-left: 3px solid transparent;
+            border-radius: 0;
+            background: transparent;
+            color: #cbd5f5;
             cursor: pointer;
-            font-size: 16px;
+            transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            font-family: inherit;
+            font-size: 14px;
             font-weight: 600;
-            transition: all 0.3s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .tab-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background: rgba(148, 163, 184, 0.12);
+            color: #f8fafc;
         }
 
         .tab-button.active {
-            background: #667eea;
-            color: white;
+            background: rgba(37, 99, 235, 0.12);
+            border-left-color: #60a5fa;
+            color: #ffffff;
+        }
+
+        .sidebar-card {
+            margin-top: auto;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        .main {
+            margin-left: 240px;
+            background: var(--panel-muted);
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            padding: 20px 32px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .topbar h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 26px;
+            margin-bottom: 6px;
+        }
+
+        .topbar p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--panel-muted);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .content {
+            padding: 28px 32px 40px;
+            flex: 1;
+            overflow-y: auto;
         }
 
         .tab-content {
             display: none;
+            animation: fadeIn 0.25s ease;
         }
 
         .tab-content.active {
             display: block;
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            margin-bottom: 6px;
+        }
+
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
         .card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: var(--panel);
+            padding: 22px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
             margin-bottom: 20px;
         }
 
         .card h2 {
-            color: #333;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            margin-bottom: 18px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            color: #333;
+            margin-bottom: 6px;
             font-weight: 600;
+            color: var(--text);
+            font-size: 13px;
         }
 
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            padding: 11px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background: #f8fafc;
+            font-family: inherit;
         }
 
         .form-group input:focus,
         .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
 
         .form-group textarea {
@@ -126,37 +268,44 @@
         }
 
         .btn {
-            background: #667eea;
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
+            padding: 10px 18px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background: var(--primary-dark);
+            transform: translateY(-1px);
         }
 
         .btn-danger {
-            background: #e74c3c;
+            background: #dc2626;
         }
 
         .btn-danger:hover {
-            background: #c0392b;
+            background: #b91c1c;
         }
 
         .btn-success {
-            background: #27ae60;
+            background: #16a34a;
         }
 
         .btn-success:hover {
-            background: #229954;
+            background: #15803d;
+        }
+
+        .btn-small {
+            padding: 8px 14px;
+            font-size: 12px;
         }
 
         .item-list {
@@ -165,52 +314,50 @@
         }
 
         .item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
         }
 
         .item-info h3 {
-            color: #333;
-            margin-bottom: 5px;
+            color: var(--text);
+            margin-bottom: 6px;
+            font-size: 15px;
         }
 
         .item-info p {
-            color: #666;
-            font-size: 14px;
+            color: var(--text-muted);
+            font-size: 13px;
         }
 
         .item-actions {
             display: flex;
             gap: 10px;
-        }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 14px;
+            flex-wrap: wrap;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
             font-weight: 600;
-            margin-left: 10px;
+            margin-left: 8px;
         }
 
         .status-active {
-            background: #d4edda;
-            color: #155724;
+            background: #dcfce7;
+            color: #166534;
         }
 
         .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
+            background: #fee2e2;
+            color: #991b1b;
         }
 
         .grid-2 {
@@ -219,21 +366,12 @@
             gap: 20px;
         }
 
-        @media (max-width: 768px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-
-            .tabs {
-                flex-direction: column;
-            }
-        }
-
         .alert {
-            padding: 15px;
-            border-radius: 6px;
+            padding: 14px 18px;
+            border-radius: 12px;
             margin-bottom: 20px;
             display: none;
+            font-size: 13px;
         }
 
         .alert.show {
@@ -241,54 +379,44 @@
         }
 
         .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
         }
 
         .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
         }
 
         .bot-control {
-            background: white;
+            background: var(--panel);
             padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
         }
 
         .bot-status {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 14px;
             margin-bottom: 15px;
         }
 
         .status-indicator {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
-        .status-rodando {
-            background: #27ae60;
-        }
-
-        .status-parado {
-            background: #95a5a6;
-        }
-
-        .status-iniciando {
-            background: #f39c12;
-        }
-
-        .status-erro {
-            background: #e74c3c;
-        }
+        .status-rodando { background: #16a34a; }
+        .status-parado { background: #94a3b8; }
+        .status-iniciando { background: #f59e0b; }
+        .status-erro { background: #dc2626; }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -298,205 +426,302 @@
         .bot-buttons {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
             margin-bottom: 15px;
         }
 
         .bot-logs {
-            background: #1e1e1e;
+            background: #0b1020;
             color: #d4d4d4;
             padding: 15px;
-            border-radius: 6px;
-            max-height: 200px;
+            border-radius: 12px;
+            max-height: 220px;
             overflow-y: auto;
             font-family: 'Courier New', monospace;
             font-size: 12px;
             line-height: 1.5;
         }
+
+        @media (max-width: 980px) {
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .brand {
+                flex: 1 1 100%;
+            }
+
+            .sidebar-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .tab-button {
+                min-width: 170px;
+                border-left: none;
+                border-bottom: 2px solid transparent;
+            }
+
+            .tab-button.active {
+                border-left-color: transparent;
+                border-bottom-color: #60a5fa;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .content {
+                padding: 22px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏥 Painel Administrativo - Bot Clínica</h1>
-            <p>Gerencie todas as configurações do seu bot WhatsApp</p>
-        </div>
-
-        <div id="alert" class="alert"></div>
-
-        <!-- CONTROLE DO BOT -->
-        <div class="bot-control">
-            <div class="bot-status">
-                <div id="status-indicator" class="status-indicator status-parado"></div>
-                <h3 id="status-text">Bot: Parado</h3>
-            </div>
-            <div class="bot-buttons">
-                <button class="btn btn-success" onclick="iniciarBot()">▶️ Iniciar Bot</button>
-                <button class="btn btn-danger" onclick="pararBot()">⏹️ Parar Bot</button>
-                <button class="btn" onclick="reiniciarBot()">🔄 Reiniciar Bot</button>
-                <button class="btn" onclick="atualizarStatusBot()">🔃 Atualizar Status</button>
-            </div>
-            <div class="bot-logs" id="bot-logs">
-                <div style="color: #888;">Aguardando logs do bot...</div>
-            </div>
-        </div>
-
-        <div class="tabs">
-            <button class="tab-button active" onclick="showTab('unidades')">Unidades</button>
-            <button class="tab-button" onclick="showTab('departamentos')">Departamentos</button>
-            <button class="tab-button" onclick="showTab('vendedores')">Vendedores</button>
-            <button class="tab-button" onclick="showTab('valores')">Valores</button>
-        </div>
-
-        <!-- TAB UNIDADES -->
-        <div id="tab-unidades" class="tab-content active">
-            <div class="card">
-                <h2>Gerenciar Unidades</h2>
-                <form id="form-unidade" onsubmit="salvarUnidade(event)">
-                    <input type="hidden" id="unidade-id">
-                    <div class="form-group">
-                        <label>Nome da Unidade</label>
-                        <input type="text" id="unidade-nome" placeholder="Ex: Atividade Laboral" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Descrição</label>
-                        <textarea id="unidade-descricao" placeholder="Ex: Saúde ocupacional e medicina do trabalho" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Endereço</label>
-                        <textarea id="unidade-endereco" placeholder="Rua do Cruzeiro, Tatuí/SP" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="unidade-ativa" required>
-                            <option value="1">Ativa</option>
-                            <option value="0">Inativa</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn">Salvar Unidade</button>
-                    <button type="button" class="btn btn-danger" onclick="limparFormUnidade()">Cancelar</button>
-                </form>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">BC</div>
+                <div class="brand-text">
+                    <span class="brand-title">Bot Clinica</span>
+                    <span class="brand-subtitle">Painel administrativo</span>
+                </div>
             </div>
 
-            <div class="card">
-                <h2>Unidades Cadastradas</h2>
-                <div id="lista-unidades" class="item-list"></div>
-            </div>
-        </div>
+            <nav class="sidebar-nav">
+                <button class="tab-button active" onclick="showTab('unidades', this)">Unidades</button>
+                <button class="tab-button" onclick="showTab('departamentos', this)">Departamentos</button>
+                <button class="tab-button" onclick="showTab('vendedores', this)">Vendedores</button>
+                <button class="tab-button" onclick="showTab('valores', this)">Valores</button>
+            </nav>
 
-        <!-- TAB DEPARTAMENTOS -->
-        <div id="tab-departamentos" class="tab-content">
-            <div class="card">
-                <h2>Gerenciar Departamentos</h2>
-                <form id="form-departamento" onsubmit="salvarDepartamento(event)">
-                    <input type="hidden" id="depto-id">
-                    <div class="form-group">
-                        <label>Unidade</label>
-                        <select id="depto-unidade" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Nome do Departamento</label>
-                        <input type="text" id="depto-nome" placeholder="Ex: Administrativo" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Mensagem de Resposta</label>
-                        <textarea id="depto-mensagem" placeholder="Mensagem que será enviada quando o cliente escolher este departamento" required></textarea>
-                    </div>
-                    <button type="submit" class="btn">Salvar Departamento</button>
-                    <button type="button" class="btn btn-danger" onclick="limparFormDepartamento()">Cancelar</button>
-                </form>
+            <div class="sidebar-card">
+                Controle total do bot, dados e atendimento em tempo real.
             </div>
+        </aside>
 
-            <div class="card">
-                <h2>Departamentos Cadastrados</h2>
-                <div id="lista-departamentos" class="item-list"></div>
-            </div>
-        </div>
+        <div class="main">
+            <header class="topbar">
+                <div>
+                    <h1>Painel do Bot</h1>
+                    <p>Gerencie unidades, departamentos, vendedores e valores do atendimento.</p>
+                </div>
+                <div class="status-pill">
+                    Status do sistema
+                    <span id="status-text-pill">Aguardando</span>
+                </div>
+            </header>
 
-        <!-- TAB VENDEDORES -->
-        <div id="tab-vendedores" class="tab-content">
-            <div class="card">
-                <h2>Gerenciar Vendedores</h2>
-                <form id="form-vendedor" onsubmit="salvarVendedor(event)">
-                    <input type="hidden" id="vendedor-id">
-                    <div class="form-group">
-                        <label>Unidade</label>
-                        <select id="vendedor-unidade" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Nome do Vendedor</label>
-                        <input type="text" id="vendedor-nome" placeholder="Ex: Maria Silva" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Número WhatsApp (com código do país)</label>
-                        <input type="text" id="vendedor-numero" placeholder="Ex: 5515999990001" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="vendedor-ativo" required>
-                            <option value="1">Ativo</option>
-                            <option value="0">Inativo</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn">Salvar Vendedor</button>
-                    <button type="button" class="btn btn-danger" onclick="limparFormVendedor()">Cancelar</button>
-                </form>
-            </div>
+            <main class="content">
+                <div id="alert" class="alert"></div>
 
-            <div class="card">
-                <h2>Vendedores Cadastrados</h2>
-                <div id="lista-vendedores" class="item-list"></div>
-            </div>
-        </div>
+                <div class="bot-control">
+                    <div class="bot-status">
+                        <div id="status-indicator" class="status-indicator status-parado"></div>
+                        <h3 id="status-text">Bot: Parado</h3>
+                    </div>
+                    <div class="bot-buttons">
+                        <button class="btn btn-success" onclick="iniciarBot()">Iniciar Bot</button>
+                        <button class="btn btn-danger" onclick="pararBot()">Parar Bot</button>
+                        <button class="btn" onclick="reiniciarBot()">Reiniciar Bot</button>
+                        <button class="btn" onclick="atualizarStatusBot()">Atualizar Status</button>
+                    </div>
+                    <div class="bot-logs" id="bot-logs">
+                        <div style="color: #888;">Aguardando logs do bot...</div>
+                    </div>
+                </div>
 
-        <!-- TAB VALORES -->
-        <div id="tab-valores" class="tab-content">
-            <div class="card">
-                <h2>Gerenciar Valores/Serviços</h2>
-                <form id="form-valor" onsubmit="salvarValor(event)">
-                    <input type="hidden" id="valor-id">
-                    <div class="form-group">
-                        <label>Unidade</label>
-                        <select id="valor-unidade" required></select>
+                <div id="tab-unidades" class="tab-content active">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Unidades</h2>
+                            <p class="section-subtitle">Cadastre e organize as unidades da clinica.</p>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Nome do Serviço</label>
-                        <input type="text" id="valor-servico" placeholder="Ex: Exame Admissional" required>
+                    <div class="card">
+                        <h2>Cadastro de Unidade</h2>
+                        <form id="form-unidade" onsubmit="salvarUnidade(event)">
+                            <input type="hidden" id="unidade-id">
+                            <div class="form-group">
+                                <label>Nome da Unidade</label>
+                                <input type="text" id="unidade-nome" placeholder="Ex: Atividade Laboral" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descricao</label>
+                                <textarea id="unidade-descricao" placeholder="Ex: Saude ocupacional e medicina do trabalho" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Endereco</label>
+                                <textarea id="unidade-endereco" placeholder="Rua do Cruzeiro, Tatui/SP" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="unidade-ativa" required>
+                                    <option value="1">Ativa</option>
+                                    <option value="0">Inativa</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn">Salvar Unidade</button>
+                            <button type="button" class="btn btn-danger" onclick="limparFormUnidade()">Cancelar</button>
+                        </form>
                     </div>
-                    <div class="form-group">
-                        <label>Valor (R$)</label>
-                        <input type="text" id="valor-preco" placeholder="Ex: 150,00" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Ordem de Exibição</label>
-                        <input type="number" id="valor-ordem" value="1" required>
-                    </div>
-                    <button type="submit" class="btn">Salvar Valor</button>
-                    <button type="button" class="btn btn-danger" onclick="limparFormValor()">Cancelar</button>
-                </form>
-            </div>
 
-            <div class="card">
-                <h2>Valores Cadastrados</h2>
-                <div id="lista-valores" class="item-list"></div>
-            </div>
+                    <div class="card">
+                        <h2>Unidades Cadastradas</h2>
+                        <div id="lista-unidades" class="item-list"></div>
+                    </div>
+                </div>
+
+                <div id="tab-departamentos" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Departamentos</h2>
+                            <p class="section-subtitle">Mensagens e fluxo por setor.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Cadastro de Departamento</h2>
+                        <form id="form-departamento" onsubmit="salvarDepartamento(event)">
+                            <input type="hidden" id="depto-id">
+                            <div class="form-group">
+                                <label>Unidade</label>
+                                <select id="depto-unidade" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do Departamento</label>
+                                <input type="text" id="depto-nome" placeholder="Ex: Administrativo" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Mensagem de Resposta</label>
+                                <textarea id="depto-mensagem" placeholder="Mensagem enviada quando o cliente escolher este departamento" required></textarea>
+                            </div>
+                            <button type="submit" class="btn">Salvar Departamento</button>
+                            <button type="button" class="btn btn-danger" onclick="limparFormDepartamento()">Cancelar</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Departamentos Cadastrados</h2>
+                        <div id="lista-departamentos" class="item-list"></div>
+                    </div>
+                </div>
+
+                <div id="tab-vendedores" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Vendedores</h2>
+                            <p class="section-subtitle">Equipe comercial e canais ativos.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Cadastro de Vendedor</h2>
+                        <form id="form-vendedor" onsubmit="salvarVendedor(event)">
+                            <input type="hidden" id="vendedor-id">
+                            <div class="form-group">
+                                <label>Unidade</label>
+                                <select id="vendedor-unidade" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do Vendedor</label>
+                                <input type="text" id="vendedor-nome" placeholder="Ex: Maria Silva" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Numero WhatsApp (com codigo do pais)</label>
+                                <input type="text" id="vendedor-numero" placeholder="Ex: 5515999990001" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="vendedor-ativo" required>
+                                    <option value="1">Ativo</option>
+                                    <option value="0">Inativo</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn">Salvar Vendedor</button>
+                            <button type="button" class="btn btn-danger" onclick="limparFormVendedor()">Cancelar</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Vendedores Cadastrados</h2>
+                        <div id="lista-vendedores" class="item-list"></div>
+                    </div>
+                </div>
+
+                <div id="tab-valores" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Valores e Servicos</h2>
+                            <p class="section-subtitle">Tabela de precos e ordenacao.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Cadastro de Servico</h2>
+                        <form id="form-valor" onsubmit="salvarValor(event)">
+                            <input type="hidden" id="valor-id">
+                            <div class="form-group">
+                                <label>Unidade</label>
+                                <select id="valor-unidade" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do Servico</label>
+                                <input type="text" id="valor-servico" placeholder="Ex: Exame Admissional" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor (R$)</label>
+                                <input type="text" id="valor-preco" placeholder="Ex: 150,00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Ordem de Exibicao</label>
+                                <input type="number" id="valor-ordem" value="1" required>
+                            </div>
+                            <button type="submit" class="btn">Salvar Valor</button>
+                            <button type="button" class="btn btn-danger" onclick="limparFormValor()">Cancelar</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Valores Cadastrados</h2>
+                        <div id="lista-valores" class="item-list"></div>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
 
     <script>
         const API_URL = 'http://localhost:3000/api';
 
-        // Navegação entre tabs
-        function showTab(tabName) {
+        function showTab(tabName, button) {
             document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            event.target.classList.add('active');
+
+            button.classList.add('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
 
             carregarDados(tabName);
         }
 
-        // Alertas
         function mostrarAlerta(mensagem, tipo) {
             const alert = document.getElementById('alert');
             alert.className = `alert alert-${tipo} show`;
@@ -504,18 +729,17 @@
             setTimeout(() => alert.classList.remove('show'), 3000);
         }
 
-        // UNIDADES
         async function carregarUnidades() {
             const res = await fetch(`${API_URL}/unidades`);
             const unidades = await res.json();
-            
+
             const lista = document.getElementById('lista-unidades');
             lista.innerHTML = unidades.map(u => `
                 <div class="item">
                     <div class="item-info">
                         <h3>${u.nome} <span class="status-badge status-${u.ativa ? 'active' : 'inactive'}">${u.ativa ? 'Ativa' : 'Inativa'}</span></h3>
                         <p>${u.descricao}</p>
-                        <p><strong>Endereço:</strong> ${u.endereco}</p>
+                        <p><strong>Endereco:</strong> ${u.endereco}</p>
                     </div>
                     <div class="item-actions">
                         <button class="btn btn-small" onclick="editarUnidade(${u.id})">Editar</button>
@@ -524,11 +748,10 @@
                 </div>
             `).join('');
 
-            // Atualizar selects
             const selects = ['depto-unidade', 'vendedor-unidade', 'valor-unidade'];
             selects.forEach(id => {
                 const select = document.getElementById(id);
-                select.innerHTML = '<option value="">Selecione...</option>' + 
+                select.innerHTML = '<option value="">Selecione...</option>' +
                     unidades.filter(u => u.ativa).map(u => `<option value="${u.id}">${u.nome}</option>`).join('');
             });
         }
@@ -564,22 +787,22 @@
         async function editarUnidade(id) {
             const res = await fetch(`${API_URL}/unidades/${id}`);
             const unidade = await res.json();
-            
+
             document.getElementById('unidade-id').value = unidade.id;
             document.getElementById('unidade-nome').value = unidade.nome;
             document.getElementById('unidade-descricao').value = unidade.descricao;
             document.getElementById('unidade-endereco').value = unidade.endereco;
             document.getElementById('unidade-ativa').value = unidade.ativa;
-            
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         async function deletarUnidade(id) {
             if (!confirm('Deseja realmente excluir esta unidade?')) return;
-            
+
             const res = await fetch(`${API_URL}/unidades/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                mostrarAlerta('Unidade excluída com sucesso!', 'success');
+                mostrarAlerta('Unidade excluida com sucesso!', 'success');
                 carregarUnidades();
             }
         }
@@ -589,11 +812,10 @@
             document.getElementById('unidade-id').value = '';
         }
 
-        // DEPARTAMENTOS
         async function carregarDepartamentos() {
             const res = await fetch(`${API_URL}/departamentos`);
             const departamentos = await res.json();
-            
+
             const lista = document.getElementById('lista-departamentos');
             lista.innerHTML = departamentos.map(d => `
                 <div class="item">
@@ -638,21 +860,21 @@
         async function editarDepartamento(id) {
             const res = await fetch(`${API_URL}/departamentos/${id}`);
             const depto = await res.json();
-            
+
             document.getElementById('depto-id').value = depto.id;
             document.getElementById('depto-unidade').value = depto.unidade_id;
             document.getElementById('depto-nome').value = depto.nome;
             document.getElementById('depto-mensagem').value = depto.mensagem;
-            
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         async function deletarDepartamento(id) {
             if (!confirm('Deseja realmente excluir este departamento?')) return;
-            
+
             const res = await fetch(`${API_URL}/departamentos/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                mostrarAlerta('Departamento excluído com sucesso!', 'success');
+                mostrarAlerta('Departamento excluido com sucesso!', 'success');
                 carregarDepartamentos();
             }
         }
@@ -662,11 +884,10 @@
             document.getElementById('depto-id').value = '';
         }
 
-        // VENDEDORES
         async function carregarVendedores() {
             const res = await fetch(`${API_URL}/vendedores`);
             const vendedores = await res.json();
-            
+
             const lista = document.getElementById('lista-vendedores');
             lista.innerHTML = vendedores.map(v => `
                 <div class="item">
@@ -712,22 +933,22 @@
         async function editarVendedor(id) {
             const res = await fetch(`${API_URL}/vendedores/${id}`);
             const vendedor = await res.json();
-            
+
             document.getElementById('vendedor-id').value = vendedor.id;
             document.getElementById('vendedor-unidade').value = vendedor.unidade_id;
             document.getElementById('vendedor-nome').value = vendedor.nome;
             document.getElementById('vendedor-numero').value = vendedor.numero;
             document.getElementById('vendedor-ativo').value = vendedor.ativo;
-            
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         async function deletarVendedor(id) {
             if (!confirm('Deseja realmente excluir este vendedor?')) return;
-            
+
             const res = await fetch(`${API_URL}/vendedores/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                mostrarAlerta('Vendedor excluído com sucesso!', 'success');
+                mostrarAlerta('Vendedor excluido com sucesso!', 'success');
                 carregarVendedores();
             }
         }
@@ -737,11 +958,10 @@
             document.getElementById('vendedor-id').value = '';
         }
 
-        // VALORES
         async function carregarValores() {
             const res = await fetch(`${API_URL}/valores`);
             const valores = await res.json();
-            
+
             const lista = document.getElementById('lista-valores');
             lista.innerHTML = valores.map(v => `
                 <div class="item">
@@ -786,22 +1006,22 @@
         async function editarValor(id) {
             const res = await fetch(`${API_URL}/valores/${id}`);
             const valor = await res.json();
-            
+
             document.getElementById('valor-id').value = valor.id;
             document.getElementById('valor-unidade').value = valor.unidade_id;
             document.getElementById('valor-servico').value = valor.servico;
             document.getElementById('valor-preco').value = valor.preco;
             document.getElementById('valor-ordem').value = valor.ordem;
-            
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         async function deletarValor(id) {
             if (!confirm('Deseja realmente excluir este valor?')) return;
-            
+
             const res = await fetch(`${API_URL}/valores/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                mostrarAlerta('Valor excluído com sucesso!', 'success');
+                mostrarAlerta('Valor excluido com sucesso!', 'success');
                 carregarValores();
             }
         }
@@ -811,9 +1031,8 @@
             document.getElementById('valor-id').value = '';
         }
 
-        // Carregar dados conforme tab ativa
         function carregarDados(tab) {
-            switch(tab) {
+            switch (tab) {
                 case 'unidades':
                     carregarUnidades();
                     break;
@@ -829,37 +1048,33 @@
             }
         }
 
-        // Inicializar
         window.onload = () => {
             carregarUnidades();
             atualizarStatusBot();
-            // Atualizar status do bot a cada 3 segundos
             setInterval(atualizarStatusBot, 3000);
         };
 
-        // ==================== CONTROLE DO BOT ====================
         async function atualizarStatusBot() {
             try {
                 const res = await fetch(`${API_URL}/bot/status`);
                 const data = await res.json();
-                
+
                 const indicator = document.getElementById('status-indicator');
                 const text = document.getElementById('status-text');
+                const textPill = document.getElementById('status-text-pill');
                 const logsDiv = document.getElementById('bot-logs');
-                
-                // Atualizar indicador
+
                 indicator.className = `status-indicator status-${data.status}`;
-                
-                // Atualizar texto
+
                 const statusTexto = {
-                    'rodando': '🟢 Bot: Rodando',
-                    'parado': '⚫ Bot: Parado',
-                    'iniciando': '🟡 Bot: Iniciando...',
-                    'erro': '🔴 Bot: Erro'
+                    'rodando': 'Bot: Rodando',
+                    'parado': 'Bot: Parado',
+                    'iniciando': 'Bot: Iniciando',
+                    'erro': 'Bot: Erro'
                 };
                 text.textContent = statusTexto[data.status] || 'Bot: Desconhecido';
-                
-                // Atualizar logs
+                textPill.textContent = statusTexto[data.status] || 'Desconhecido';
+
                 if (data.logs && data.logs.length > 0) {
                     logsDiv.innerHTML = data.logs.map(log => {
                         const escaped = log.replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -867,7 +1082,7 @@
                     }).join('');
                     logsDiv.scrollTop = logsDiv.scrollHeight;
                 } else {
-                    logsDiv.innerHTML = '<div style="color: #888;">Nenhum log disponível</div>';
+                    logsDiv.innerHTML = '<div style="color: #888;">Nenhum log disponivel</div>';
                 }
             } catch (error) {
                 console.error('Erro ao atualizar status:', error);

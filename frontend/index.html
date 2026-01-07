@@ -3,88 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Administrativo - Bot Clínica</title>
+    <title>Painel Administrativo - Bot Clinica</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🏥 Painel Administrativo - Bot Clínica Atividade</h1>
-            <p>Gerencie todas as configurações do bot WhatsApp</p>
-        </header>
-
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="unidades">🏢 Unidades</button>
-            <button class="tab-btn" data-tab="vendedores">👥 Vendedores</button>
-            <button class="tab-btn" data-tab="servicos">💰 Serviços</button>
-            <button class="tab-btn" data-tab="departamentos">📋 Departamentos</button>
-            <button class="tab-btn" data-tab="enderecos">📍 Endereços</button>
-            <button class="tab-btn" data-tab="configuracoes">⚙️ Configurações</button>
-            <button class="tab-btn" data-tab="logs">📊 Logs</button>
-        </nav>
-
-        <!-- Tab: Unidades -->
-        <div class="tab-content active" id="unidades">
-            <div class="section-header">
-                <h2>Gerenciar Unidades</h2>
-                <button class="btn btn-primary" onclick="abrirModalUnidade()">+ Nova Unidade</button>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">BC</div>
+                <div class="brand-text">
+                    <span class="brand-title">Bot Clinica</span>
+                    <span class="brand-subtitle">Painel administrativo</span>
+                </div>
             </div>
-            <div id="lista-unidades" class="data-grid"></div>
-        </div>
 
-        <!-- Tab: Vendedores -->
-        <div class="tab-content" id="vendedores">
-            <div class="section-header">
-                <h2>Gerenciar Vendedores</h2>
-                <button class="btn btn-primary" onclick="abrirModalVendedor()">+ Novo Vendedor</button>
-            </div>
-            <div id="lista-vendedores" class="data-grid"></div>
-        </div>
+            <nav class="sidebar-nav">
+                <button class="tab-btn active" data-tab="unidades">
+                    <span class="nav-label">Unidades</span>
+                    <span class="nav-meta">Cadastro principal</span>
+                </button>
+                <button class="tab-btn" data-tab="vendedores">
+                    <span class="nav-label">Vendedores</span>
+                    <span class="nav-meta">Time comercial</span>
+                </button>
+                <button class="tab-btn" data-tab="servicos">
+                    <span class="nav-label">Servicos</span>
+                    <span class="nav-meta">Catalogo</span>
+                </button>
+                <button class="tab-btn" data-tab="departamentos">
+                    <span class="nav-label">Departamentos</span>
+                    <span class="nav-meta">Estrutura</span>
+                </button>
+                <button class="tab-btn" data-tab="enderecos">
+                    <span class="nav-label">Enderecos</span>
+                    <span class="nav-meta">Localizacao</span>
+                </button>
+                <button class="tab-btn" data-tab="configuracoes">
+                    <span class="nav-label">Configuracoes</span>
+                    <span class="nav-meta">Geral</span>
+                </button>
+                <button class="tab-btn" data-tab="logs">
+                    <span class="nav-label">Logs</span>
+                    <span class="nav-meta">Conversas</span>
+                </button>
+            </nav>
 
-        <!-- Tab: Serviços -->
-        <div class="tab-content" id="servicos">
-            <div class="section-header">
-                <h2>Gerenciar Serviços</h2>
-                <button class="btn btn-primary" onclick="abrirModalServico()">+ Novo Serviço</button>
+            <div class="sidebar-footer">
+                <div class="support-card">
+                    <p class="support-title">Central do sistema</p>
+                    <p class="support-text">Controle total do bot e dos dados da clinica.</p>
+                </div>
             </div>
-            <div id="lista-servicos" class="data-grid"></div>
-        </div>
+        </aside>
 
-        <!-- Tab: Departamentos -->
-        <div class="tab-content" id="departamentos">
-            <div class="section-header">
-                <h2>Gerenciar Departamentos</h2>
-            </div>
-            <div id="lista-departamentos" class="data-grid"></div>
-        </div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1>Painel do Bot</h1>
+                    <p>Gerencie unidades, vendedores, servicos e logs em um so lugar.</p>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-chip">
+                        <div class="user-avatar">AD</div>
+                        <div class="user-info">
+                            <span class="user-name">Administrador</span>
+                            <span class="user-role">Clinica Atividade</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-        <!-- Tab: Endereços -->
-        <div class="tab-content" id="enderecos">
-            <div class="section-header">
-                <h2>Gerenciar Endereços</h2>
-            </div>
-            <div id="lista-enderecos" class="data-grid"></div>
-        </div>
+            <main class="content-area">
+                <div class="tab-content active" id="unidades">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Unidades</h2>
+                            <p class="section-subtitle">Cadastre e organize as unidades da clinica.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="abrirModalUnidade()">+ Nova Unidade</button>
+                    </div>
+                    <div id="lista-unidades" class="data-grid"></div>
+                </div>
 
-        <!-- Tab: Configurações -->
-        <div class="tab-content" id="configuracoes">
-            <div class="section-header">
-                <h2>Configurações Gerais</h2>
-            </div>
-            <div id="lista-configuracoes" class="data-grid"></div>
-        </div>
+                <div class="tab-content" id="vendedores">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Vendedores</h2>
+                            <p class="section-subtitle">Controle equipe, contatos e status.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="abrirModalVendedor()">+ Novo Vendedor</button>
+                    </div>
+                    <div id="lista-vendedores" class="data-grid"></div>
+                </div>
 
-        <!-- Tab: Logs -->
-        <div class="tab-content" id="logs">
-            <div class="section-header">
-                <h2>Logs de Conversas</h2>
-                <button class="btn btn-secondary" onclick="carregarLogs()">🔄 Atualizar</button>
-            </div>
-            <div id="lista-logs" class="logs-container"></div>
+                <div class="tab-content" id="servicos">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Servicos</h2>
+                            <p class="section-subtitle">Defina o portfolio de servicos oferecidos.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="abrirModalServico()">+ Novo Servico</button>
+                    </div>
+                    <div id="lista-servicos" class="data-grid"></div>
+                </div>
+
+                <div class="tab-content" id="departamentos">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Departamentos</h2>
+                            <p class="section-subtitle">Visualize setores por unidade.</p>
+                        </div>
+                    </div>
+                    <div id="lista-departamentos" class="data-grid"></div>
+                </div>
+
+                <div class="tab-content" id="enderecos">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Enderecos</h2>
+                            <p class="section-subtitle">Mantenha os enderecos atualizados.</p>
+                        </div>
+                    </div>
+                    <div id="lista-enderecos" class="data-grid"></div>
+                </div>
+
+                <div class="tab-content" id="configuracoes">
+                    <div class="section-header">
+                        <div>
+                            <h2>Configuracoes Gerais</h2>
+                            <p class="section-subtitle">Ajuste parametros do atendimento.</p>
+                        </div>
+                    </div>
+                    <div id="lista-configuracoes" class="data-grid"></div>
+                </div>
+
+                <div class="tab-content" id="logs">
+                    <div class="section-header">
+                        <div>
+                            <h2>Logs de Conversas</h2>
+                            <p class="section-subtitle">Historico de atendimentos do bot.</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="carregarLogs()">Atualizar</button>
+                    </div>
+                    <div id="lista-logs" class="logs-container"></div>
+                </div>
+            </main>
         </div>
     </div>
 
-    <!-- Modal Unidade -->
     <div id="modal-unidade" class="modal">
         <div class="modal-content">
             <span class="close" onclick="fecharModal('modal-unidade')">&times;</span>
@@ -96,18 +162,18 @@
                     <input type="text" id="unidade-nome" required>
                 </div>
                 <div class="form-group">
-                    <label>Descrição:</label>
+                    <label>Descricao:</label>
                     <textarea id="unidade-descricao" rows="3"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Ícone:</label>
-                    <input type="text" id="unidade-icone" placeholder="Ex: 💼">
+                    <label>Icone:</label>
+                    <input type="text" id="unidade-icone" placeholder="Ex: BC">
                 </div>
                 <div class="form-group">
                     <label>Ordem:</label>
                     <input type="number" id="unidade-ordem" value="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="unidade-ativo" checked>
                         Ativo
@@ -121,7 +187,6 @@
         </div>
     </div>
 
-    <!-- Modal Vendedor -->
     <div id="modal-vendedor" class="modal">
         <div class="modal-content">
             <span class="close" onclick="fecharModal('modal-vendedor')">&times;</span>
@@ -148,7 +213,7 @@
                     <label>Ordem:</label>
                     <input type="number" id="vendedor-ordem" value="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="vendedor-ativo" checked>
                         Ativo
@@ -162,11 +227,10 @@
         </div>
     </div>
 
-    <!-- Modal Serviço -->
     <div id="modal-servico" class="modal">
         <div class="modal-content">
             <span class="close" onclick="fecharModal('modal-servico')">&times;</span>
-            <h3 id="titulo-modal-servico">Novo Serviço</h3>
+            <h3 id="titulo-modal-servico">Novo Servico</h3>
             <form id="form-servico" onsubmit="salvarServico(event)">
                 <input type="hidden" id="servico-id">
                 <div class="form-group">
@@ -174,7 +238,7 @@
                     <input type="text" id="servico-nome" required>
                 </div>
                 <div class="form-group">
-                    <label>Descrição:</label>
+                    <label>Descricao:</label>
                     <textarea id="servico-descricao" rows="3"></textarea>
                 </div>
                 <div class="form-group">
@@ -189,7 +253,7 @@
                     <label>Ordem:</label>
                     <input type="number" id="servico-ordem" value="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="servico-ativo" checked>
                         Ativo
