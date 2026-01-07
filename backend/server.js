@@ -4,6 +4,34 @@ const path = require('path');
 const db = require('./database');
 const { spawn } = require('child_process');
 
+function dbAllAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows);
+    });
+  });
+}
+
+function dbGetAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) return reject(err);
+      resolve(row);
+    });
+  });
+}
+
+function dbRunAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
+  });
+}
+
+
 const app = express();
 const PORT = 3000;
 
@@ -318,6 +346,162 @@ app.post('/api/logs', (req, res) => {
       res.json({ id: this.lastID });
     }
   );
+});
+
+
+
+// ==================== ROTAS - ANALYTICS ====================
+app.get('/api/analytics/summary', async (req, res) => {
+  try {
+    const range = Math.max(1, Math.min(parseInt(req.query.range || '30', 10), 365));
+    const rangeExpr = `-${range} days`;
+
+    const mensagens = await dbAllAsync(
+      "SELECT date(data_hora) as dia, COUNT(*) as total FROM interacoes WHERE tipo = 'mensagem_recebida' AND data_hora >= datetime('now', ?) GROUP BY dia ORDER BY dia",
+      [rangeExpr]
+    );
+
+    const conversas = await dbAllAsync(
+      "SELECT date(data_hora) as dia, COUNT(*) as total FROM interacoes WHERE tipo = 'conversa_iniciada' AND data_hora >= datetime('now', ?) GROUP BY dia ORDER BY dia",
+      [rangeExpr]
+    );
+
+    const abandonos = await dbAllAsync(
+      "SELECT date(data_hora) as dia, COUNT(*) as total FROM interacoes WHERE tipo IN ('fila_abandonada', 'conversa_abandonada') AND data_hora >= datetime('now', ?) GROUP BY dia ORDER BY dia",
+      [rangeExpr]
+    );
+
+    const totalMensagens = await dbGetAsync(
+      "SELECT COUNT(*) as total FROM interacoes WHERE tipo = 'mensagem_recebida' AND data_hora >= datetime('now', ?)",
+      [rangeExpr]
+    );
+
+    const totalConversas = await dbGetAsync(
+      "SELECT COUNT(*) as total FROM interacoes WHERE tipo = 'conversa_iniciada' AND data_hora >= datetime('now', ?)",
+      [rangeExpr]
+    );
+
+    const totalAbandonos = await dbGetAsync(
+      "SELECT COUNT(*) as total FROM interacoes WHERE tipo IN ('fila_abandonada', 'conversa_abandonada') AND data_hora >= datetime('now', ?)",
+      [rangeExpr]
+    );
+
+    const totalAtendimentos = await dbGetAsync(
+      "SELECT COUNT(*) as total FROM interacoes WHERE tipo = 'atendimento_iniciado' AND data_hora >= datetime('now', ?)",
+      [rangeExpr]
+    );
+
+    const assuntosRows = await dbAllAsync(
+      "SELECT dados FROM interacoes WHERE tipo = 'contato_departamento' AND data_hora >= datetime('now', ?)",
+      [rangeExpr]
+    );
+
+    const assuntosMap = {};
+    assuntosRows.forEach((row) => {
+      try {
+        const dados = JSON.parse(row.dados || '{}');
+        const assunto = dados.departamento || 'Nao informado';
+        assuntosMap[assunto] = (assuntosMap[assunto] || 0) + 1;
+      } catch (err) {
+        // ignore
+      }
+    });
+
+    const topAssuntos = Object.entries(assuntosMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([assunto, total]) => ({ assunto, total }));
+
+    const topNumeros = await dbAllAsync(
+      "SELECT user_id as numero, COUNT(*) as total FROM interacoes WHERE tipo = 'mensagem_recebida' AND data_hora >= datetime('now', ?) GROUP BY user_id ORDER BY total DESC LIMIT 10",
+      [rangeExpr]
+    );
+
+    res.json({
+      range,
+      totals: {
+        mensagens: totalMensagens ? totalMensagens.total : 0,
+        conversas: totalConversas ? totalConversas.total : 0,
+        abandonos: totalAbandonos ? totalAbandonos.total : 0,
+        atendimentos: totalAtendimentos ? totalAtendimentos.total : 0
+      },
+      series: {
+        mensagens,
+        conversas,
+        abandonos
+      },
+      topAssuntos,
+      topNumeros
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== ROTAS - FILA DE ATENDIMENTO ====================
+app.get('/api/fila/resumo', async (req, res) => {
+  try {
+    const rows = await dbAllAsync(
+      `
+      SELECT f.*, d.nome as departamento_nome, u.nome as unidade_nome
+      FROM fila_atendimentos f
+      LEFT JOIN departamentos d ON f.departamento_id = d.id
+      LEFT JOIN unidades u ON f.unidade_id = u.id
+      WHERE f.status IN ('aguardando', 'em_atendimento')
+      ORDER BY f.departamento_id, f.created_at
+      `
+    );
+
+    const resumo = {};
+    rows.forEach((row) => {
+      const key = row.departamento_id;
+      if (!resumo[key]) {
+        resumo[key] = {
+          departamento_id: row.departamento_id,
+          departamento_nome: row.departamento_nome || 'Departamento',
+          unidade_nome: row.unidade_nome || 'Unidade',
+          ativo: null,
+          aguardando: []
+        };
+      }
+      if (row.status === 'em_atendimento') {
+        resumo[key].ativo = row;
+      } else {
+        resumo[key].aguardando.push(row);
+      }
+    });
+
+    res.json(Object.values(resumo));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/fila/encerrar', async (req, res) => {
+  try {
+    const { departamento_id } = req.body;
+    if (!departamento_id) {
+      return res.status(400).json({ error: 'departamento_id obrigatorio' });
+    }
+
+    const ativo = await dbGetAsync(
+      'SELECT id FROM fila_atendimentos WHERE departamento_id = ? AND status = "em_atendimento" ORDER BY created_at ASC LIMIT 1',
+      [departamento_id]
+    );
+
+    if (!ativo) {
+      return res.status(404).json({ error: 'Nenhum atendimento ativo' });
+    }
+
+    await dbRunAsync(
+      'UPDATE fila_atendimentos SET status = "finalizado", updated_at = datetime("now", "localtime") WHERE id = ?',
+      [ativo.id]
+    );
+
+    res.json({ message: 'Atendimento encerrado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==================== CONTROLE DO BOT ====================

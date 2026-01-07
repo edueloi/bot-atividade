@@ -69,6 +69,36 @@ db.serialize(() => {
     )
   `);
 
+  // Tabela de conversas (status por usuario)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS conversas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      unidade_id INTEGER,
+      departamento_id INTEGER,
+      status TEXT NOT NULL,
+      started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_message_at DATETIME
+    )
+  `);
+
+  // Tabela de fila de atendimentos por departamento
+  db.run(`
+    CREATE TABLE IF NOT EXISTS fila_atendimentos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      unidade_id INTEGER NOT NULL,
+      departamento_id INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_message_at DATETIME,
+      last_notified_at DATETIME
+    )
+  `);
+
+
   // Tabela de configurações gerais do bot
   db.run(`
     CREATE TABLE IF NOT EXISTS configuracoes (
@@ -89,7 +119,9 @@ db.serialize(() => {
         ['mensagem_opcao_invalida', '❌ Opção inválida!\n\nPor favor, digite o *número* da opção desejada.', 'Mensagem quando usuário digita opção inválida'],
         ['mensagem_horario_atendimento', '🕐 *Horário de Atendimento*\n\nSegunda a Sexta: 08:00 às 18:00\nSábado: 08:00 às 12:00', 'Horário de funcionamento'],
         ['bot_ativo', '1', 'Bot está ativo (1) ou inativo (0)'],
-        ['tempo_reload_config', '300000', 'Tempo em ms para recarregar configurações (padrão: 5 min)']
+        ['tempo_reload_config', '300000', 'Tempo em ms para recarregar configurações (padrão: 5 min)'],
+        ['fila_intervalo_aviso', '30', 'Intervalo em segundos para avisar posicao na fila'],
+        ['fila_timeout_abandono', '1200', 'Tempo em segundos para marcar abandono na fila']
       ];
       
       configs.forEach(([chave, valor, descricao]) => {

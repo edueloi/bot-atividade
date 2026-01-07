@@ -535,6 +535,111 @@
         @keyframes toastOut {
             to { opacity: 0; transform: translateY(12px); }
         }
+
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 180px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #f8fafc;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: #2563eb;
+            border-radius: 8px 8px 4px 4px;
+            min-height: 6px;
+            position: relative;
+        }
+
+        .chart-bar span {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .chart-bar small {
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .queue-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .queue-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .queue-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .queue-users {
+            display: grid;
+            gap: 8px;
+        }
+
+        .queue-user {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            padding: 8px 10px;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            background: #ffffff;
+        }
+
     </style>
 </head>
 <body>
@@ -553,7 +658,9 @@
                 <button class="tab-button" onclick="showTab('departamentos', this)">Departamentos</button>
                 <button class="tab-button" onclick="showTab('vendedores', this)">Vendedores</button>
                 <button class="tab-button" onclick="showTab('valores', this)">Valores</button>
-                <button class="tab-button" onclick="showTab('configuracoes', this)">⚙️ Configurações</button>
+                <button class="tab-button" onclick="showTab('configuracoes', this)">Configuracoes</button>
+                <button class="tab-button" onclick="showTab('relatorios', this)">Relatorios</button>
+                <button class="tab-button" onclick="showTab('filas', this)">Filas</button>
             </nav>
 
             <div class="sidebar-card">
@@ -813,6 +920,87 @@
                         <p style="color: #78350f;">O bot será reiniciado automaticamente após salvar as configurações para aplicar as mudanças.</p>
                     </div>
                 </div>
+
+                <div id="tab-relatorios" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Relatorios de Atendimento</h2>
+                            <p class="section-subtitle">Indicadores de mensagens, conversas e assuntos.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Visao geral</h2>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">Mensagens (hoje)</div>
+                                <div id="stats-mensagens-dia" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Mensagens (mes)</div>
+                                <div id="stats-mensagens-mes" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Mensagens (ano)</div>
+                                <div id="stats-mensagens-ano" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Conversas (mes)</div>
+                                <div id="stats-conversas-mes" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Abandonos (mes)</div>
+                                <div id="stats-abandonos-mes" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Atendimentos (mes)</div>
+                                <div id="stats-atendimentos-mes" class="stat-value">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h2>Mensagens - Ultimos 30 dias</h2>
+                            <div id="chart-mensagens" class="chart"></div>
+                        </div>
+                        <div class="card">
+                            <h2>Conversas - Ultimos 30 dias</h2>
+                            <div id="chart-conversas" class="chart"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <h2>Abandonos - Ultimos 30 dias</h2>
+                            <div id="chart-abandonos" class="chart"></div>
+                        </div>
+                        <div class="card">
+                            <h2>Top assuntos</h2>
+                            <div id="lista-assuntos" class="item-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Numeros com mais contatos</h2>
+                        <div id="lista-numeros" class="item-list"></div>
+                    </div>
+                </div>
+
+                <div id="tab-filas" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Fila de Atendimento</h2>
+                            <p class="section-subtitle">Acompanhe atendimentos ativos e fila por departamento.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Filas ativas</h2>
+                        <div id="lista-filas" class="queue-list"></div>
+                    </div>
+                </div>
+
             </main>
         </div>
     </div>
@@ -878,6 +1066,157 @@
             });
 
             showToast(mensagem, tipo);
+        }
+
+
+        function renderBarChart(containerId, data) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.innerHTML = '';
+            const max = Math.max(...data.map(item => item.value), 1);
+
+            data.forEach(item => {
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = `${Math.max(6, Math.round((item.value / max) * 100))}%`;
+
+                const value = document.createElement('span');
+                value.textContent = item.value;
+
+                const label = document.createElement('small');
+                label.textContent = item.label;
+
+                bar.appendChild(value);
+                bar.appendChild(label);
+                container.appendChild(bar);
+            });
+        }
+
+        async function carregarRelatorios() {
+            try {
+                const [resDia, resMes, resAno] = await Promise.all([
+                    fetch(`${API_URL}/analytics/summary?range=1`),
+                    fetch(`${API_URL}/analytics/summary?range=30`),
+                    fetch(`${API_URL}/analytics/summary?range=365`)
+                ]);
+
+                const dadosDia = await resDia.json();
+                const dadosMes = await resMes.json();
+                const dadosAno = await resAno.json();
+
+                document.getElementById('stats-mensagens-dia').textContent = dadosDia.totals.mensagens || 0;
+                document.getElementById('stats-mensagens-mes').textContent = dadosMes.totals.mensagens || 0;
+                document.getElementById('stats-mensagens-ano').textContent = dadosAno.totals.mensagens || 0;
+                document.getElementById('stats-conversas-mes').textContent = dadosMes.totals.conversas || 0;
+                document.getElementById('stats-abandonos-mes').textContent = dadosMes.totals.abandonos || 0;
+                document.getElementById('stats-atendimentos-mes').textContent = dadosMes.totals.atendimentos || 0;
+
+                const mensagensSerie = (dadosMes.series.mensagens || []).slice(-10).map(item => ({
+                    label: item.dia ? item.dia.slice(5) : '--',
+                    value: item.total
+                }));
+                const conversasSerie = (dadosMes.series.conversas || []).slice(-10).map(item => ({
+                    label: item.dia ? item.dia.slice(5) : '--',
+                    value: item.total
+                }));
+                const abandonosSerie = (dadosMes.series.abandonos || []).slice(-10).map(item => ({
+                    label: item.dia ? item.dia.slice(5) : '--',
+                    value: item.total
+                }));
+
+                renderBarChart('chart-mensagens', mensagensSerie);
+                renderBarChart('chart-conversas', conversasSerie);
+                renderBarChart('chart-abandonos', abandonosSerie);
+
+                const assuntos = document.getElementById('lista-assuntos');
+                assuntos.innerHTML = (dadosMes.topAssuntos || []).map(item => `
+                    <div class="item">
+                        <div class="item-info">
+                            <h3>${item.assunto}</h3>
+                            <p>Total: ${item.total}</p>
+                        </div>
+                    </div>
+                `).join('') || '<div class="item">Nenhum assunto registrado.</div>';
+
+                const numeros = document.getElementById('lista-numeros');
+                numeros.innerHTML = (dadosMes.topNumeros || []).map(item => `
+                    <div class="item">
+                        <div class="item-info">
+                            <h3>${item.numero}</h3>
+                            <p>Total: ${item.total}</p>
+                        </div>
+                    </div>
+                `).join('') || '<div class="item">Nenhum contato registrado.</div>';
+            } catch (error) {
+                console.error('Erro ao carregar relatorios:', error);
+                mostrarAlerta('Erro ao carregar relatorios', 'error');
+            }
+        }
+
+        async function carregarFilas() {
+            try {
+                const res = await fetch(`${API_URL}/fila/resumo`);
+                const filas = await res.json();
+
+                const container = document.getElementById('lista-filas');
+                if (!filas || filas.length === 0) {
+                    container.innerHTML = '<div class="item">Nenhuma fila ativa no momento.</div>';
+                    return;
+                }
+
+                container.innerHTML = filas.map((fila) => {
+                    const ativo = fila.ativo
+                        ? `<div class="queue-user"><span>Ativo: ${fila.ativo.user_id}</span><span>em atendimento</span></div>`
+                        : '<div class="queue-user"><span>Nenhum atendimento ativo</span><span>-</span></div>';
+
+                    const aguardando = fila.aguardando.map((user, index) => `
+                        <div class="queue-user">
+                            <span>Fila #${index + 1}: ${user.user_id}</span>
+                            <span>aguardando</span>
+                        </div>
+                    `).join('');
+
+                    return `
+                        <div class="queue-card">
+                            <div class="queue-header">
+                                <div>
+                                    <strong>${fila.departamento_nome}</strong>
+                                    <div class="queue-meta">${fila.unidade_nome}</div>
+                                </div>
+                                <button class="btn btn-small btn-danger" onclick="encerrarAtendimento(${fila.departamento_id})">Encerrar atendimento</button>
+                            </div>
+                            <div class="queue-users">
+                                ${ativo}
+                                ${aguardando || '<div class="queue-user"><span>Nenhum aguardando</span><span>-</span></div>'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Erro ao carregar filas:', error);
+                mostrarAlerta('Erro ao carregar filas', 'error');
+            }
+        }
+
+        async function encerrarAtendimento(departamentoId) {
+            if (!confirm('Deseja encerrar o atendimento atual deste departamento?')) return;
+            try {
+                const res = await fetch(`${API_URL}/fila/encerrar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ departamento_id: departamentoId })
+                });
+
+                if (res.ok) {
+                    mostrarAlerta('Atendimento encerrado', 'success');
+                    carregarFilas();
+                } else {
+                    mostrarAlerta('Erro ao encerrar atendimento', 'error');
+                }
+            } catch (error) {
+                mostrarAlerta('Erro ao encerrar atendimento', 'error');
+            }
         }
 
         async function carregarUnidades() {
@@ -1196,6 +1535,12 @@
                 case 'valores':
                     carregarValores();
                     break;
+                case 'relatorios':
+                    carregarRelatorios();
+                    break;
+                case 'filas':
+                    carregarFilas();
+                    break;
             }
         }
 
@@ -1204,6 +1549,17 @@
             carregarConfiguracoes();
             atualizarStatusBot();
             setInterval(atualizarStatusBot, 3000);
+            carregarRelatorios();
+            carregarFilas();
+            setInterval(() => {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === 'tab-filas') {
+                    carregarFilas();
+                }
+                if (activeTab && activeTab.id === 'tab-relatorios') {
+                    carregarRelatorios();
+                }
+            }, 30000);
             
             // Configurar event listener do formulário de configurações
             document.getElementById('form-configuracoes').addEventListener('submit', async (e) => {

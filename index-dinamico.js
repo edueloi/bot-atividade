@@ -9,6 +9,7 @@ const userStates = {};
 
 // Cache de configurações
 let config = null;
+let filaConfig = { intervaloAvisoSeg: 30, timeoutAbandonoSeg: 1200 };
 
 // Recarregar configurações do banco
 async function recarregarConfiguracoes() {
@@ -17,6 +18,12 @@ async function recarregarConfiguracoes() {
     await botIntegration.inicializarBanco();
     
     config = await botIntegration.carregarConfiguracoes();
+    const aviso = parseInt(config.config.fila_intervalo_aviso || '30', 10);
+    const abandono = parseInt(config.config.fila_timeout_abandono || '1200', 10);
+    filaConfig = {
+      intervaloAvisoSeg: Number.isNaN(aviso) ? 30 : aviso,
+      timeoutAbandonoSeg: Number.isNaN(abandono) ? 1200 : abandono
+    };
     console.log('✅ Configurações carregadas do banco de dados');
     console.log(`   - Unidades: ${config.unidades.length}`);
     return config;
@@ -67,6 +74,14 @@ function start(client) {
   // Recarregar configurações a cada 5 minutos
   setInterval(recarregarConfiguracoes, 5 * 60 * 1000);
 
+  // Processar fila periodicamente (avisos e promocoes)
+  setInterval(() => {
+    if (!config) return;
+    botIntegration.processarFila(client, filaConfig).catch((err) => {
+      console.error('Erro ao processar fila:', err);
+    });
+  }, 10000);
+
   // Escutar mensagens recebidas
   client.onMessage(async (message) => {
     try {
@@ -85,6 +100,8 @@ function start(client) {
         }
 
         const state = userStates[userId];
+        await botIntegration.registrarMensagemRecebida(userId, userMessage);
+
 
         // === PRIMEIRA MENSAGEM - MOSTRAR SAUDAÇÃO E MENU ===
         if (state.primeiraMsg) {
@@ -108,6 +125,7 @@ function start(client) {
 
         // === MENU INICIAL - COMANDO ===
         if (userInput === 'menu' || userInput === 'inicio') {
+          await botIntegration.marcarFilaAbandonada(userId, 'menu');
           state.menu = 'inicial';
           state.unidadeId = null;
           const menuPrincipal = config.config.mensagem_menu_principal || '📋 Menu Principal';
@@ -184,36 +202,54 @@ function start(client) {
             const mensagem = botIntegration.gerarMenuUnidade(unidade);
             await client.sendText(userId, mensagem);
           }
-          else if (userInput === '2' || (departamentos.length > 0 && departamentos.some(d => d.nome.toLowerCase() === 'vendas'))) {
-            // Vendas
-            state.menu = 'vendedores';
-            const vendedores = config.vendedores[unidade.id] || [];
-            const mensagem = botIntegration.gerarMenuVendedores(unidade, vendedores);
-            await client.sendText(userId, mensagem);
-          }
           else if (/^[1-9]$/.test(userInput)) {
             const index = parseInt(userInput) - 1;
             if (departamentos[index]) {
               const depto = departamentos[index];
-              await client.sendText(userId, depto.mensagem);
-              botIntegration.registrarInteracao(userId, 'contato_departamento', { 
-                unidade: unidade.nome, 
-                departamento: depto.nome 
-              });
+              if (depto.nome && depto.nome.toLowerCase() === 'vendas') {
+                // Vendas
+                state.menu = 'vendedores';
+                const vendedores = config.vendedores[unidade.id] || [];
+                const mensagem = botIntegration.gerarMenuVendedores(unidade, vendedores);
+                await client.sendText(userId, mensagem);
+              } else {
+                const filaInfo = await botIntegration.entrarFilaAtendimento(userId, unidade.id, depto.id);
+                const aviso = filaInfo.status === 'em_atendimento'
+                  ? 'Voce esta sendo atendido agora.'
+                  : `Voce entrou na fila. Sua posicao e ${filaInfo.position}. Voce sera avisado a cada ${filaConfig.intervaloAvisoSeg} segundos.`;
+
+                await client.sendText(userId, `${depto.mensagem}
+
+${aviso}`);
+                botIntegration.registrarInteracao(userId, 'contato_departamento', { 
+                  unidade: unidade.nome, 
+                  departamento: depto.nome 
+                });
+                state.menu = 'fila';
+              }
             } else {
-              // Departamento genérico (Administrativo, Agendamento, Financeiro)
+              // Departamento generico (Administrativo, Agendamento, Financeiro)
               const nomesDeptos = ['Administrativo', 'Vendas', 'Agendamento', 'Financeiro'];
               const deptoNome = nomesDeptos[index] || 'Departamento';
               
               await client.sendText(
                 userId,
-                `📞 *${deptoNome}*\n\n` +
-                `Estamos direcionando sua solicitação.\n` +
-                `Um atendente entrará em contato em breve.\n\n` +
-                `_Horário de atendimento:_\n` +
-                `Segunda a Sexta: 08:00 - 18:00\n` +
-                `Sábado: 08:00 - 12:00\n\n` +
-                `Digite *menu* para voltar ao início.`
+                `?? *${deptoNome}*
+
+` +
+                `Estamos direcionando sua solicitacao.
+` +
+                `Um atendente entrara em contato em breve.
+
+` +
+                `_Horario de atendimento:_
+` +
+                `Segunda a Sexta: 08:00 - 18:00
+` +
+                `Sabado: 08:00 - 12:00
+
+` +
+                `Digite *menu* para voltar ao inicio.`
               );
               
               botIntegration.registrarInteracao(userId, 'contato_departamento', { 
@@ -223,7 +259,7 @@ function start(client) {
             }
           }
           else {
-            await client.sendText(userId, '❓ Opção inválida. Digite um número válido ou *0* para voltar.');
+            await client.sendText(userId, '? Opcao invalida. Digite um numero valido ou *0* para voltar.');
           }
         }
 
@@ -250,6 +286,7 @@ function start(client) {
                 vendedor: vendedor.nome,
                 numero: vendedor.numero
               });
+              await botIntegration.atualizarStatusConversa(userId, 'finalizada', unidade.id, null);
               
               console.log(`[TRANSFERÊNCIA] ${userId} -> ${vendedor.nome} (${vendedor.numero})`);
               state.menu = 'inicial';

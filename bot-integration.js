@@ -71,6 +71,36 @@ function inicializarBanco() {
                 )
             `);
 
+            // Tabela de conversas (status por usuario)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS conversas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    unidade_id INTEGER,
+                    departamento_id INTEGER,
+                    status TEXT NOT NULL,
+                    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_message_at DATETIME
+                )
+            `);
+
+            // Tabela de fila de atendimentos por departamento
+            db.run(`
+                CREATE TABLE IF NOT EXISTS fila_atendimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    unidade_id INTEGER NOT NULL,
+                    departamento_id INTEGER NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_message_at DATETIME,
+                    last_notified_at DATETIME
+                )
+            `);
+
+
             // Tabela de configurações gerais do bot
             db.run(`
                 CREATE TABLE IF NOT EXISTS configuracoes (
@@ -174,7 +204,9 @@ function inserirConfiguracoesIniciais() {
                 ['mensagem_opcao_invalida', '❌ Opção inválida!\n\nPor favor, digite o *número* da opção desejada.', 'Mensagem quando usuário digita opção inválida'],
                 ['mensagem_horario_atendimento', '🕐 *Horário de Atendimento*\n\nSegunda a Sexta: 08:00 às 18:00\nSábado: 08:00 às 12:00', 'Horário de funcionamento'],
                 ['bot_ativo', '1', 'Bot está ativo (1) ou inativo (0)'],
-                ['tempo_reload_config', '300000', 'Tempo em ms para recarregar configurações (padrão: 5 min)']
+                ['tempo_reload_config', '300000', 'Tempo em ms para recarregar configurações (padrão: 5 min)'],
+                ['fila_intervalo_aviso', '30', 'Intervalo em segundos para avisar posicao na fila'],
+                ['fila_timeout_abandono', '1200', 'Tempo em segundos para marcar abandono na fila']
             ];
 
             let completed = 0;
@@ -373,6 +405,249 @@ function registrarInteracao(userId, tipo, dados) {
     });
 }
 
+
+// Helpers simples para queries async
+function dbAll(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+function dbGet(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) return reject(err);
+            resolve(row);
+        });
+    });
+}
+
+function dbRun(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) return reject(err);
+            resolve(this);
+        });
+    });
+}
+
+// Registrar mensagem recebida
+async function registrarMensagemRecebida(userId, mensagem) {
+    registrarInteracao(userId, 'mensagem_recebida', { mensagem });
+    await iniciarConversaSeNecessario(userId);
+    await atualizarUltimaMensagemConversa(userId);
+    await atualizarFilaUltimaMensagem(userId);
+}
+
+function registrarMensagemEnviada(userId, mensagem, contexto) {
+    const dados = { mensagem };
+    if (contexto) {
+        dados.contexto = contexto;
+    }
+    registrarInteracao(userId, 'mensagem_enviada', dados);
+}
+
+// Iniciar conversa se nao existir ativa
+async function iniciarConversaSeNecessario(userId) {
+    const row = await dbGet(
+        'SELECT id, status FROM conversas WHERE user_id = ? ORDER BY id DESC LIMIT 1',
+        [userId]
+    );
+
+    if (!row || ['finalizada', 'abandonada'].includes(row.status)) {
+        await dbRun(
+            'INSERT INTO conversas (user_id, status, started_at, updated_at, last_message_at) VALUES (?, ?, datetime("now", "localtime"), datetime("now", "localtime"), datetime("now", "localtime"))',
+            [userId, 'iniciada']
+        );
+        registrarInteracao(userId, 'conversa_iniciada', {});
+    }
+}
+
+async function atualizarUltimaMensagemConversa(userId) {
+    await dbRun(
+        'UPDATE conversas SET last_message_at = datetime("now", "localtime"), updated_at = datetime("now", "localtime") WHERE id = (SELECT id FROM conversas WHERE user_id = ? ORDER BY id DESC LIMIT 1)',
+        [userId]
+    );
+}
+
+async function atualizarStatusConversa(userId, status, unidadeId, departamentoId) {
+    await dbRun(
+        'UPDATE conversas SET status = ?, unidade_id = COALESCE(?, unidade_id), departamento_id = COALESCE(?, departamento_id), updated_at = datetime("now", "localtime") WHERE id = (SELECT id FROM conversas WHERE user_id = ? ORDER BY id DESC LIMIT 1)',
+        [status, unidadeId, departamentoId, userId]
+    );
+}
+
+// Fila de atendimento
+async function obterFilaDepartamento(departamentoId) {
+    return dbAll(
+        'SELECT * FROM fila_atendimentos WHERE departamento_id = ? AND status IN ("aguardando", "em_atendimento") ORDER BY created_at ASC',
+        [departamentoId]
+    );
+}
+
+async function entrarFilaAtendimento(userId, unidadeId, departamentoId) {
+    const existente = await dbGet(
+        'SELECT * FROM fila_atendimentos WHERE user_id = ? AND departamento_id = ? AND status IN ("aguardando", "em_atendimento") ORDER BY created_at DESC LIMIT 1',
+        [userId, departamentoId]
+    );
+
+    if (existente) {
+        const fila = await obterFilaDepartamento(departamentoId);
+        const aguardando = fila.filter((f) => f.status === 'aguardando');
+        const pos = aguardando.findIndex((f) => f.user_id === userId);
+        return {
+            status: existente.status,
+            position: pos >= 0 ? pos + 1 : 0
+        };
+    }
+
+    const ativo = await dbGet(
+        'SELECT id FROM fila_atendimentos WHERE departamento_id = ? AND status = "em_atendimento" ORDER BY created_at ASC LIMIT 1',
+        [departamentoId]
+    );
+
+    if (!ativo) {
+        await dbRun(
+            'INSERT INTO fila_atendimentos (user_id, unidade_id, departamento_id, status, created_at, updated_at, last_message_at) VALUES (?, ?, ?, "em_atendimento", datetime("now", "localtime"), datetime("now", "localtime"), datetime("now", "localtime"))',
+            [userId, unidadeId, departamentoId]
+        );
+        await atualizarStatusConversa(userId, 'em_atendimento', unidadeId, departamentoId);
+        registrarInteracao(userId, 'atendimento_iniciado', { unidade_id: unidadeId, departamento_id: departamentoId });
+        return { status: 'em_atendimento', position: 0 };
+    }
+
+    await dbRun(
+        'INSERT INTO fila_atendimentos (user_id, unidade_id, departamento_id, status, created_at, updated_at, last_message_at) VALUES (?, ?, ?, "aguardando", datetime("now", "localtime"), datetime("now", "localtime"), datetime("now", "localtime"))',
+        [userId, unidadeId, departamentoId]
+    );
+
+    const countRow = await dbGet(
+        'SELECT COUNT(*) as total FROM fila_atendimentos WHERE departamento_id = ? AND status = "aguardando"',
+        [departamentoId]
+    );
+
+    await atualizarStatusConversa(userId, 'aguardando_atendimento', unidadeId, departamentoId);
+    registrarInteracao(userId, 'fila_entrada', { unidade_id: unidadeId, departamento_id: departamentoId, posicao: countRow.total });
+    return { status: 'aguardando', position: countRow.total };
+}
+
+async function atualizarFilaUltimaMensagem(userId) {
+    await dbRun(
+        'UPDATE fila_atendimentos SET last_message_at = datetime("now", "localtime"), updated_at = datetime("now", "localtime") WHERE user_id = ? AND status IN ("aguardando", "em_atendimento")',
+        [userId]
+    );
+}
+
+async function marcarFilaAbandonada(userId, motivo) {
+    const row = await dbGet(
+        'SELECT id, unidade_id, departamento_id FROM fila_atendimentos WHERE user_id = ? AND status = "aguardando" ORDER BY created_at DESC LIMIT 1',
+        [userId]
+    );
+
+    if (!row) return false;
+
+    await dbRun(
+        'UPDATE fila_atendimentos SET status = "abandonado", updated_at = datetime("now", "localtime") WHERE id = ?',
+        [row.id]
+    );
+
+    await atualizarStatusConversa(userId, 'abandonada', row.unidade_id, row.departamento_id);
+    registrarInteracao(userId, 'fila_abandonada', { unidade_id: row.unidade_id, departamento_id: row.departamento_id, motivo: motivo || 'menu' });
+    return true;
+}
+
+
+async function processarFila(client, options = {}) {
+    const intervaloAvisoMs = (options.intervaloAvisoSeg || 30) * 1000;
+    const timeoutAbandonoMs = (options.timeoutAbandonoSeg || 1200) * 1000;
+    const agora = Date.now();
+
+    const finalizados = await dbAll(
+        'SELECT * FROM fila_atendimentos WHERE status = "finalizado"'
+    );
+
+    for (const f of finalizados) {
+        const precisaAviso = !f.last_notified_at || new Date(f.last_notified_at).getTime() < new Date(f.updated_at).getTime();
+        if (precisaAviso) {
+            await client.sendText(f.user_id, 'Seu atendimento foi finalizado. Se precisar de algo, digite *menu*.');
+            await dbRun(
+                'UPDATE fila_atendimentos SET status = "encerrado", last_notified_at = datetime("now", "localtime"), updated_at = datetime("now", "localtime") WHERE id = ?',
+                [f.id]
+            );
+            await atualizarStatusConversa(f.user_id, 'finalizada', f.unidade_id, f.departamento_id);
+            registrarInteracao(f.user_id, 'atendimento_finalizado', { unidade_id: f.unidade_id, departamento_id: f.departamento_id });
+        }
+    }
+
+    const departamentos = await dbAll(
+        'SELECT DISTINCT departamento_id FROM fila_atendimentos WHERE status IN ("aguardando", "em_atendimento")'
+    );
+
+    for (const d of departamentos) {
+        const deptoId = d.departamento_id;
+        const ativo = await dbGet(
+            'SELECT * FROM fila_atendimentos WHERE departamento_id = ? AND status = "em_atendimento" ORDER BY created_at ASC LIMIT 1',
+            [deptoId]
+        );
+
+        let aguardando = await dbAll(
+            'SELECT * FROM fila_atendimentos WHERE departamento_id = ? AND status = "aguardando" ORDER BY created_at ASC',
+            [deptoId]
+        );
+
+        // Promover proximo se nao ha ativo
+        if (!ativo && aguardando.length > 0) {
+            const proximo = aguardando[0];
+            await dbRun(
+                'UPDATE fila_atendimentos SET status = "em_atendimento", updated_at = datetime("now", "localtime") WHERE id = ?',
+                [proximo.id]
+            );
+            await atualizarStatusConversa(proximo.user_id, 'em_atendimento', proximo.unidade_id, proximo.departamento_id);
+            registrarInteracao(proximo.user_id, 'atendimento_iniciado', { unidade_id: proximo.unidade_id, departamento_id: proximo.departamento_id });
+            await client.sendText(proximo.user_id, 'Agora e a sua vez! Um atendente vai falar com voce em seguida.');
+            aguardando = aguardando.slice(1);
+        }
+
+        // Abandono por inatividade
+        const ativosAguardando = [];
+        for (const filaItem of aguardando) {
+            const baseTime = filaItem.last_message_at || filaItem.created_at;
+            if (timeoutAbandonoMs > 0 && baseTime) {
+                const lastTime = new Date(baseTime).getTime();
+                if (!Number.isNaN(lastTime) && agora - lastTime > timeoutAbandonoMs) {
+                    await dbRun(
+                        'UPDATE fila_atendimentos SET status = "abandonado", updated_at = datetime("now", "localtime") WHERE id = ?',
+                        [filaItem.id]
+                    );
+                    await atualizarStatusConversa(filaItem.user_id, 'abandonada', filaItem.unidade_id, filaItem.departamento_id);
+                    registrarInteracao(filaItem.user_id, 'fila_abandonada', { unidade_id: filaItem.unidade_id, departamento_id: filaItem.departamento_id, motivo: 'timeout' });
+                    await client.sendText(filaItem.user_id, 'Sua fila expirou por inatividade. Digite *menu* para voltar.');
+                    continue;
+                }
+            }
+            ativosAguardando.push(filaItem)
+        }
+
+        // Avisos periodicos de posicao
+        for (let i = 0; i < ativosAguardando.length; i++) {
+            const filaItem = ativosAguardando[i];
+            const lastNotified = filaItem.last_notified_at ? new Date(filaItem.last_notified_at).getTime() : 0;
+            if (!lastNotified || agora - lastNotified >= intervaloAvisoMs) {
+                const posicao = i + 1;
+                await client.sendText(filaItem.user_id, `Voce esta na fila do atendimento. Sua posicao atual e ${posicao}.`);
+                await dbRun(
+                    'UPDATE fila_atendimentos SET last_notified_at = datetime("now", "localtime") WHERE id = ?',
+                    [filaItem.id]
+                );
+            }
+        }
+    }
+}
+
+
 // Obter uma configuração específica
 function obterConfiguracao(chave) {
     return new Promise((resolve, reject) => {
@@ -408,6 +683,15 @@ module.exports = {
     gerarMenuVendedores,
     gerarMensagemTransferencia,
     registrarInteracao,
+    registrarMensagemRecebida,
+    iniciarConversaSeNecessario,
+    atualizarUltimaMensagemConversa,
+    atualizarStatusConversa,
+    obterFilaDepartamento,
+    entrarFilaAtendimento,
+    atualizarFilaUltimaMensagem,
+    marcarFilaAbandonada,
+    processarFila,
     obterConfiguracao,
     atualizarConfiguracao
 };
