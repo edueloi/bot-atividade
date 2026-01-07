@@ -69,6 +69,17 @@ function inicializarBanco() {
                     dados TEXT,
                     data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
+            `);
+
+            // Tabela de configurações gerais do bot
+            db.run(`
+                CREATE TABLE IF NOT EXISTS configuracoes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chave TEXT UNIQUE NOT NULL,
+                    valor TEXT,
+                    descricao TEXT,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
             `, (err) => {
                 if (err) {
                     reject(err);
@@ -144,9 +155,42 @@ function inserirDadosExemplo() {
                     if (err) reject(err);
                     else {
                         console.log('✅ Dados de exemplo inseridos com sucesso!');
-                        resolve();
+                        // Inserir configurações iniciais
+                        inserirConfiguracoesIniciais().then(resolve).catch(reject);
                     }
                 });
+            });
+        });
+    });
+}
+
+// Inserir configurações iniciais
+function inserirConfiguracoesIniciais() {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            const configs = [
+                ['mensagem_boas_vindas', '👋 Olá! Seja bem-vindo(a)!\n\nEu sou o assistente virtual da *Clínica Atividade*.\n\nComo posso ajudá-lo hoje?', 'Mensagem inicial enviada ao usuário'],
+                ['mensagem_menu_principal', '📋 *Menu Principal*\n\nEscolha uma das opções:', 'Texto do menu principal'],
+                ['mensagem_opcao_invalida', '❌ Opção inválida!\n\nPor favor, digite o *número* da opção desejada.', 'Mensagem quando usuário digita opção inválida'],
+                ['mensagem_horario_atendimento', '🕐 *Horário de Atendimento*\n\nSegunda a Sexta: 08:00 às 18:00\nSábado: 08:00 às 12:00', 'Horário de funcionamento'],
+                ['bot_ativo', '1', 'Bot está ativo (1) ou inativo (0)'],
+                ['tempo_reload_config', '300000', 'Tempo em ms para recarregar configurações (padrão: 5 min)']
+            ];
+
+            let completed = 0;
+            configs.forEach(([chave, valor, descricao]) => {
+                db.run(
+                    'INSERT OR IGNORE INTO configuracoes (chave, valor, descricao) VALUES (?, ?, ?)',
+                    [chave, valor, descricao],
+                    (err) => {
+                        if (err) return reject(err);
+                        completed++;
+                        if (completed === configs.length) {
+                            console.log('✅ Configurações iniciais inseridas');
+                            resolve();
+                        }
+                    }
+                );
             });
         });
     });
@@ -159,51 +203,62 @@ async function carregarConfiguracoes() {
             unidades: [],
             departamentos: {},
             vendedores: {},
-            valores: {}
+            valores: {},
+            config: {}
         };
 
-        // Carregar unidades
-        db.all('SELECT * FROM unidades WHERE ativa = 1 ORDER BY id', (err, unidades) => {
+        // Carregar configurações gerais primeiro
+        db.all('SELECT chave, valor FROM configuracoes', (err, configuracoes) => {
             if (err) return reject(err);
-            config.unidades = unidades;
+            
+            configuracoes.forEach(c => {
+                config.config[c.chave] = c.valor;
+            });
 
-            // Carregar departamentos
-            db.all('SELECT * FROM departamentos', (err, departamentos) => {
+            // Carregar unidades
+            db.all('SELECT * FROM unidades WHERE ativa = 1 ORDER BY id', (err, unidades) => {
                 if (err) return reject(err);
-                departamentos.forEach(d => {
-                    if (!config.departamentos[d.unidade_id]) {
-                        config.departamentos[d.unidade_id] = [];
-                    }
-                    config.departamentos[d.unidade_id].push(d);
-                });
+                config.unidades = unidades;
 
-                // Carregar vendedores
-                db.all('SELECT * FROM vendedores WHERE ativo = 1 ORDER BY ordem', (err, vendedores) => {
+                // Carregar departamentos
+                db.all('SELECT * FROM departamentos', (err, departamentos) => {
                     if (err) return reject(err);
-                    vendedores.forEach(v => {
-                        if (!config.vendedores[v.unidade_id]) {
-                            config.vendedores[v.unidade_id] = [];
+                    departamentos.forEach(d => {
+                        if (!config.departamentos[d.unidade_id]) {
+                            config.departamentos[d.unidade_id] = [];
                         }
-                        config.vendedores[v.unidade_id].push(v);
+                        config.departamentos[d.unidade_id].push(d);
                     });
 
-                    // Carregar valores
-                    db.all('SELECT * FROM valores ORDER BY unidade_id, ordem', (err, valores) => {
+                    // Carregar vendedores
+                    db.all('SELECT * FROM vendedores WHERE ativo = 1 ORDER BY ordem', (err, vendedores) => {
                         if (err) return reject(err);
-                        valores.forEach(v => {
-                            if (!config.valores[v.unidade_id]) {
-                                config.valores[v.unidade_id] = [];
+                        vendedores.forEach(v => {
+                            if (!config.vendedores[v.unidade_id]) {
+                                config.vendedores[v.unidade_id] = [];
                             }
-                            config.valores[v.unidade_id].push(v);
+                            config.vendedores[v.unidade_id].push(v);
                         });
 
-                        resolve(config);
+                        // Carregar valores
+                        db.all('SELECT * FROM valores ORDER BY unidade_id, ordem', (err, valores) => {
+                            if (err) return reject(err);
+                            valores.forEach(v => {
+                                if (!config.valores[v.unidade_id]) {
+                                    config.valores[v.unidade_id] = [];
+                                }
+                                config.valores[v.unidade_id].push(v);
+                            });
+
+                            resolve(config);
+                        });
                     });
                 });
             });
         });
     });
 }
+
 
 // Gerar menu de unidades
 function gerarMenuUnidades(unidades) {
@@ -318,6 +373,30 @@ function registrarInteracao(userId, tipo, dados) {
     });
 }
 
+// Obter uma configuração específica
+function obterConfiguracao(chave) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT valor FROM configuracoes WHERE chave = ?', [chave], (err, row) => {
+            if (err) return reject(err);
+            resolve(row ? row.valor : null);
+        });
+    });
+}
+
+// Atualizar uma configuração
+function atualizarConfiguracao(chave, valor) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'UPDATE configuracoes SET valor = ?, updated_at = CURRENT_TIMESTAMP WHERE chave = ?',
+            [valor, chave],
+            (err) => {
+                if (err) return reject(err);
+                resolve();
+            }
+        );
+    });
+}
+
 module.exports = {
     inicializarBanco,
     carregarConfiguracoes,
@@ -328,5 +407,7 @@ module.exports = {
     gerarMenuDepartamentos,
     gerarMenuVendedores,
     gerarMensagemTransferencia,
-    registrarInteracao
+    registrarInteracao,
+    obterConfiguracao,
+    atualizarConfiguracao
 };

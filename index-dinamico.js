@@ -84,12 +84,22 @@ function start(client) {
 
         const state = userStates[userId];
 
-        // === PRIMEIRA MENSAGEM - MOSTRAR MENU AUTOMATICAMENTE ===
+        // === PRIMEIRA MENSAGEM - MOSTRAR SAUDAÇÃO E MENU ===
         if (state.primeiraMsg) {
           state.primeiraMsg = false;
           state.menu = 'inicial';
-          const mensagem = botIntegration.gerarMenuUnidades(config.unidades);
-          await client.sendText(userId, mensagem);
+          
+          // Enviar mensagem de boas-vindas
+          const boasVindas = config.config.mensagem_boas_vindas || '👋 Olá! Seja bem-vindo(a)!';
+          await client.sendText(userId, boasVindas);
+          
+          // Aguardar 1 segundo e enviar menu
+          setTimeout(async () => {
+            const menuPrincipal = config.config.mensagem_menu_principal || '📋 Menu Principal';
+            const mensagem = menuPrincipal + '\n\n' + botIntegration.gerarMenuUnidades(config.unidades);
+            await client.sendText(userId, mensagem);
+          }, 1000);
+          
           botIntegration.registrarInteracao(userId, 'primeira_mensagem', { mensagem: userMessage });
           return;
         }
@@ -98,7 +108,8 @@ function start(client) {
         if (userInput === 'menu' || userInput === 'inicio') {
           state.menu = 'inicial';
           state.unidadeId = null;
-          const mensagem = botIntegration.gerarMenuUnidades(config.unidades);
+          const menuPrincipal = config.config.mensagem_menu_principal || '📋 Menu Principal';
+          const mensagem = menuPrincipal + '\n\n' + botIntegration.gerarMenuUnidades(config.unidades);
           await client.sendText(userId, mensagem);
           return;
         }
@@ -116,7 +127,8 @@ function start(client) {
             await client.sendText(userId, mensagem);
             botIntegration.registrarInteracao(userId, 'selecao_unidade', { unidade: unidade.nome });
           } else {
-            await client.sendText(userId, '❓ Opção inválida. Digite *menu* para ver as opções.');
+            const msgInvalida = config.config.mensagem_opcao_invalida || '❌ Opção inválida!';
+            await client.sendText(userId, msgInvalida);
           }
         }
 

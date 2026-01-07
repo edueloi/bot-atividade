@@ -69,81 +69,92 @@ db.serialize(() => {
     )
   `);
 
+  // Tabela de configurações gerais do bot
+  db.run(`
+    CREATE TABLE IF NOT EXISTS configuracoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      chave TEXT UNIQUE NOT NULL,
+      valor TEXT,
+      descricao TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Erro ao criar tabela configuracoes:', err);
+    } else {
+      // Inserir configurações padrão se não existirem
+      const configs = [
+        ['mensagem_boas_vindas', '👋 Olá! Seja bem-vindo(a)!\n\nEu sou o assistente virtual da *Clínica Atividade*.\n\nComo posso ajudá-lo hoje?', 'Mensagem inicial enviada ao usuário'],
+        ['mensagem_menu_principal', '📋 *Menu Principal*\n\nEscolha uma das opções:', 'Texto do menu principal'],
+        ['mensagem_opcao_invalida', '❌ Opção inválida!\n\nPor favor, digite o *número* da opção desejada.', 'Mensagem quando usuário digita opção inválida'],
+        ['mensagem_horario_atendimento', '🕐 *Horário de Atendimento*\n\nSegunda a Sexta: 08:00 às 18:00\nSábado: 08:00 às 12:00', 'Horário de funcionamento'],
+        ['bot_ativo', '1', 'Bot está ativo (1) ou inativo (0)'],
+        ['tempo_reload_config', '300000', 'Tempo em ms para recarregar configurações (padrão: 5 min)']
+      ];
+      
+      configs.forEach(([chave, valor, descricao]) => {
+        db.run(
+          'INSERT OR IGNORE INTO configuracoes (chave, valor, descricao) VALUES (?, ?, ?)',
+          [chave, valor, descricao]
+        );
+      });
+    }
+  });
+
   // Inserir dados iniciais
   db.get("SELECT COUNT(*) as count FROM unidades", (err, row) => {
     if (row.count === 0) {
       // Inserir unidades
       db.run(`
-        INSERT INTO unidades (nome, descricao, icone, ordem) VALUES 
-        ('Atividade Laboral', 'Saúde ocupacional e medicina do trabalho', '💼', 1),
-        ('Contra o Tempo', 'Academia e exercícios físicos', '💪', 2)
+        INSERT INTO unidades (nome, descricao, endereco, ativa) VALUES 
+        ('Atividade Laboral', 'Saúde ocupacional e medicina do trabalho', 'Rua do Cruzeiro\nTatuí/SP', 1),
+        ('Contra o Tempo', 'Academia e exercícios físicos', 'Rua do Cruzeiro\nTatuí/SP', 1)
       `);
 
       // Inserir departamentos
       db.run(`
-        INSERT INTO departamentos (nome, unidade_id, ordem) VALUES 
-        ('Administrativo', 1, 1),
-        ('Vendas', 1, 2),
-        ('Agendamento', 1, 3),
-        ('Financeiro', 1, 4),
-        ('Administrativo', 2, 1),
-        ('Vendas', 2, 2),
-        ('Agendamento', 2, 3),
-        ('Financeiro', 2, 4)
+        INSERT INTO departamentos (unidade_id, nome, mensagem) VALUES 
+        (1, 'Administrativo', '📞 *Administrativo*\n\nEstamos direcionando sua solicitação.\nUm atendente entrará em contato em breve.'),
+        (1, 'Vendas', '💼 Escolha um de nossos consultores'),
+        (2, 'Administrativo', '📞 *Administrativo*\n\nEstamos direcionando sua solicitação.\nUm atendente entrará em contato em breve.'),
+        (2, 'Vendas', '💼 Escolha um de nossos consultores')
       `);
 
       // Inserir vendedores Atividade Laboral
       db.run(`
-        INSERT INTO vendedores (nome, telefone, unidade_id, ordem) VALUES 
-        ('Maria Silva', '5515999990001', 1, 1),
-        ('João Santos', '5515999990002', 1, 2),
-        ('Ana Costa', '5515999990003', 1, 3)
+        INSERT INTO vendedores (nome, numero, unidade_id, ativo, ordem) VALUES 
+        ('Maria Silva', '5515999990001', 1, 1, 1),
+        ('João Santos', '5515999990002', 1, 1, 2),
+        ('Ana Costa', '5515999990003', 1, 1, 3)
       `);
 
       // Inserir vendedores Contra o Tempo
       db.run(`
-        INSERT INTO vendedores (nome, telefone, unidade_id, ordem) VALUES 
-        ('Pedro Oliveira', '5515999990004', 2, 1),
-        ('Julia Mendes', '5515999990005', 2, 2),
-        ('Carlos Souza', '5515999990006', 2, 3)
+        INSERT INTO vendedores (nome, numero, unidade_id, ativo, ordem) VALUES 
+        ('Pedro Oliveira', '5515999990004', 2, 1, 1),
+        ('Julia Mendes', '5515999990005', 2, 1, 2),
+        ('Carlos Souza', '5515999990006', 2, 1, 3)
       `);
 
-      // Inserir serviços Atividade Laboral
+      // Inserir valores Atividade Laboral
       db.run(`
-        INSERT INTO servicos (nome, valor, unidade_id, ordem) VALUES 
-        ('Exame Admissional', 150.00, 1, 1),
-        ('Exame Periódico', 120.00, 1, 2),
-        ('Exame Demissional', 100.00, 1, 3),
-        ('ASO Completo', 180.00, 1, 4),
-        ('PCMSO (por funcionário)', 80.00, 1, 5),
-        ('Consulta Médica Ocupacional', 200.00, 1, 6)
+        INSERT INTO valores (servico, preco, unidade_id, ordem) VALUES 
+        ('Exame Admissional', '150,00', 1, 1),
+        ('Exame Periódico', '120,00', 1, 2),
+        ('Exame Demissional', '100,00', 1, 3),
+        ('ASO Completo', '180,00', 1, 4),
+        ('PCMSO (por funcionário)', '80,00', 1, 5),
+        ('Consulta Médica Ocupacional', '200,00', 1, 6)
       `);
 
-      // Inserir serviços Contra o Tempo
+      // Inserir valores Contra o Tempo
       db.run(`
-        INSERT INTO servicos (nome, descricao, valor, unidade_id, ordem) VALUES 
-        ('Plano Básico', '3x semana', 120.00, 2, 1),
-        ('Plano Intermediário', '5x semana', 180.00, 2, 2),
-        ('Plano Premium', 'ilimitado', 250.00, 2, 3),
-        ('Aula experimental', 'Primeira aula', 0.00, 2, 4),
-        ('Personal trainer', 'por hora', 80.00, 2, 5),
-        ('Avaliação física', 'Avaliação completa', 50.00, 2, 6)
-      `);
-
-      // Inserir endereços
-      db.run(`
-        INSERT INTO enderecos (rua, cidade, estado, unidade_id) VALUES 
-        ('Rua do Cruzeiro', 'Tatuí', 'SP', 1),
-        ('Rua do Cruzeiro', 'Tatuí', 'SP', 2)
-      `);
-
-      // Inserir configurações
-      db.run(`
-        INSERT INTO configuracoes (chave, valor, descricao) VALUES 
-        ('mensagem_boas_vindas', '🏥 *Bem-vindo à Clínica Atividade!*\n\nSomos uma multiclínica com duas unidades especializadas:', 'Mensagem inicial do bot'),
-        ('horario_atendimento', 'Segunda a Sexta: 08:00 - 18:00\nSábado: 08:00 - 12:00', 'Horário de atendimento'),
-        ('telefone_principal', '(15) 3251-0000', 'Telefone principal'),
-        ('email_contato', 'contato@clinicaatividade.com.br', 'Email de contato')
+        INSERT INTO valores (servico, preco, unidade_id, ordem) VALUES 
+        ('Plano Básico (3x semana)', '120,00', 2, 1),
+        ('Plano Intermediário (5x semana)', '180,00', 2, 2),
+        ('Plano Premium (ilimitado)', '250,00', 2, 3),
+        ('Personal Trainer (hora)', '80,00', 2, 4),
+        ('Avaliação Física Completa', '50,00', 2, 5)
       `);
 
       console.log('✅ Dados iniciais inseridos no banco de dados');

@@ -418,6 +418,41 @@ app.post('/api/bot/reiniciar', (req, res) => {
   res.json(result);
 });
 
+// ==================== ROTAS - CONFIGURAÇÕES ====================
+app.get('/api/configuracoes', (req, res) => {
+  db.all('SELECT * FROM configuracoes ORDER BY chave', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.get('/api/configuracoes/:chave', (req, res) => {
+  db.get('SELECT * FROM configuracoes WHERE chave = ?', [req.params.chave], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(row);
+  });
+});
+
+app.put('/api/configuracoes/:chave', (req, res) => {
+  const { valor } = req.body;
+  console.log(`📝 Atualizando configuração: ${req.params.chave}`);
+  console.log(`   Novo valor: ${valor.substring(0, 50)}...`);
+  
+  db.run(
+    'UPDATE configuracoes SET valor = ?, updated_at = CURRENT_TIMESTAMP WHERE chave = ?',
+    [valor, req.params.chave],
+    function(err) {
+      if (err) {
+        console.error('❌ Erro ao atualizar:', err.message);
+        return res.status(500).json({ error: err.message });
+      }
+      console.log(`✅ Atualizado! Linhas afetadas: ${this.changes}`);
+      agendarReinicioBot();
+      res.json({ message: 'Configuração atualizada com sucesso' });
+    }
+  );
+});
+
 // Rota principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));

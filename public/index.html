@@ -514,6 +514,7 @@
                 <button class="tab-button" onclick="showTab('departamentos', this)">Departamentos</button>
                 <button class="tab-button" onclick="showTab('vendedores', this)">Vendedores</button>
                 <button class="tab-button" onclick="showTab('valores', this)">Valores</button>
+                <button class="tab-button" onclick="showTab('configuracoes', this)">⚙️ Configurações</button>
             </nav>
 
             <div class="sidebar-card">
@@ -705,14 +706,75 @@
                         <div id="lista-valores" class="item-list"></div>
                     </div>
                 </div>
+
+                <!-- Tab Configurações -->
+                <div id="tab-configuracoes" class="tab-content">
+                    <h1>⚙️ Configurações do Bot</h1>
+                    
+                    <div class="card">
+                        <h2>📝 Mensagens Personalizadas</h2>
+                        <form id="form-configuracoes" style="display: grid; gap: 20px;">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; color: var(--text);">👋 Mensagem de Boas-Vindas</label>
+                                <textarea 
+                                    id="config-mensagem_boas_vindas" 
+                                    rows="3" 
+                                    style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical;"
+                                    placeholder="Digite a mensagem de boas-vindas..."></textarea>
+                                <small style="color: var(--text-muted);">Primeira mensagem enviada quando o usuário inicia conversa</small>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; color: var(--text);">📋 Texto do Menu Principal</label>
+                                <textarea 
+                                    id="config-mensagem_menu_principal" 
+                                    rows="2" 
+                                    style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical;"
+                                    placeholder="Digite o texto do menu principal..."></textarea>
+                                <small style="color: var(--text-muted);">Texto exibido antes das opções do menu</small>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; color: var(--text);">❌ Mensagem de Opção Inválida</label>
+                                <textarea 
+                                    id="config-mensagem_opcao_invalida" 
+                                    rows="2" 
+                                    style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical;"
+                                    placeholder="Digite a mensagem de erro..."></textarea>
+                                <small style="color: var(--text-muted);">Mensagem enviada quando usuário digita opção inválida</small>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; color: var(--text);">🕐 Horário de Atendimento</label>
+                                <textarea 
+                                    id="config-mensagem_horario_atendimento" 
+                                    rows="3" 
+                                    style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical;"
+                                    placeholder="Digite o horário de atendimento..."></textarea>
+                                <small style="color: var(--text-muted);">Informações sobre horário de funcionamento</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: fit-content;">💾 Salvar Todas as Configurações</button>
+                        </form>
+                    </div>
+
+                    <div class="card" style="background: #fef3c7; border-color: #fbbf24;">
+                        <h3 style="color: #92400e; margin-bottom: 10px;">⚠️ Atenção</h3>
+                        <p style="color: #78350f;">O bot será reiniciado automaticamente após salvar as configurações para aplicar as mudanças.</p>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
 
     <script>
         const API_URL = 'http://localhost:3000/api';
-
-        function showTab(tabName, button) {
+        
+        console.log('🚀 Script carregado - funções disponíveis');
+        
+        // Garantir que showTab está no escopo global
+        window.showTab = function(tabName, button) {
+            console.log('showTab chamado:', tabName);
             document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
@@ -721,6 +783,9 @@
 
             carregarDados(tabName);
         }
+        
+        // Alias para compatibilidade
+        const showTab = window.showTab;
 
         function mostrarAlerta(mensagem, tipo) {
             const alert = document.getElementById('alert');
@@ -1050,8 +1115,43 @@
 
         window.onload = () => {
             carregarUnidades();
+            carregarConfiguracoes();
             atualizarStatusBot();
             setInterval(atualizarStatusBot, 3000);
+            
+            // Configurar event listener do formulário de configurações
+            document.getElementById('form-configuracoes').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const configuracoes = [
+                    'mensagem_boas_vindas',
+                    'mensagem_menu_principal',
+                    'mensagem_opcao_invalida',
+                    'mensagem_horario_atendimento'
+                ];
+
+                try {
+                    let salvos = 0;
+                    for (const chave of configuracoes) {
+                        const valor = document.getElementById(`config-${chave}`).value;
+                        const res = await fetch(`${API_URL}/configuracoes/${chave}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ valor })
+                        });
+                        if (res.ok) salvos++;
+                    }
+
+                    if (salvos === configuracoes.length) {
+                        mostrarAlerta('✅ Configurações salvas com sucesso! Bot será reiniciado em 5 segundos.', 'success');
+                    } else {
+                        mostrarAlerta('⚠️ Algumas configurações não foram salvas', 'warning');
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar configurações:', error);
+                    mostrarAlerta('❌ Erro ao salvar configurações', 'error');
+                }
+            });
         };
 
         async function atualizarStatusBot() {
@@ -1120,6 +1220,23 @@
                 setTimeout(atualizarStatusBot, 1000);
             } catch (error) {
                 mostrarAlerta('Erro ao reiniciar bot', 'error');
+            }
+        }
+
+        // ==================== CONFIGURACOES ====================
+        async function carregarConfiguracoes() {
+            try {
+                const res = await fetch(`${API_URL}/configuracoes`);
+                const configs = await res.json();
+
+                configs.forEach(config => {
+                    const input = document.getElementById(`config-${config.chave}`);
+                    if (input) {
+                        input.value = config.valor || '';
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao carregar configuracoes:', error);
             }
         }
     </script>
