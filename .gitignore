@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+
+# Tokens e sessões do WhatsApp
+tokens/
+*.data.json
+
+# Logs
+*.log
+logs/
+
+# Arquivos de ambiente
+.env
+.env.local
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos temporários
+tmp/
+temp/

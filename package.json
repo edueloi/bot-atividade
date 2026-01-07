@@ -1,0 +1,30 @@
+{
+  "name": "bot-clinica-whatsapp",
+  "version": "1.0.0",
+  "description": "Bot WhatsApp para clínica usando WPPConnect",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "bot": "node index-dinamico.js",
+    "painel": "node backend/server.js",
+    "dev": "node index.js",
+    "dev:all": "concurrently \"npm run dev\" \"npm run painel\""
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "wppconnect",
+    "clinica"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@wppconnect-team/wppconnect": "^1.30.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
