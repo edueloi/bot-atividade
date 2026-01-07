@@ -23,7 +23,7 @@ function agendarReinicioBot() {
     setTimeout(() => {
       console.log('🔄 Reiniciando bot após alterações...');
       reiniciarBot();
-    }, 1000);
+    }, 2000); // 2 segundos antes de reiniciar
   }
 }
 
@@ -49,6 +49,7 @@ app.post('/api/unidades', (req, res) => {
     [nome, descricao, endereco, ativa || 1],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ id: this.lastID, message: 'Unidade criada com sucesso' });
     }
   );
@@ -61,6 +62,7 @@ app.put('/api/unidades/:id', (req, res) => {
     [nome, descricao, endereco, ativa, req.params.id],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ message: 'Unidade atualizada com sucesso' });
     }
   );
@@ -69,6 +71,7 @@ app.put('/api/unidades/:id', (req, res) => {
 app.delete('/api/unidades/:id', (req, res) => {
   db.run('DELETE FROM unidades WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
+    agendarReinicioBot();
     res.json({ message: 'Unidade removida com sucesso' });
   });
 });
@@ -112,6 +115,7 @@ app.post('/api/vendedores', (req, res) => {
     [nome, numero, unidade_id, ativo || 1, ordem || 1],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ id: this.lastID, message: 'Vendedor criado com sucesso' });
     }
   );
@@ -124,6 +128,7 @@ app.put('/api/vendedores/:id', (req, res) => {
     [nome, numero, unidade_id, ativo, ordem || 1, req.params.id],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ message: 'Vendedor atualizado com sucesso' });
     }
   );
@@ -132,6 +137,7 @@ app.put('/api/vendedores/:id', (req, res) => {
 app.delete('/api/vendedores/:id', (req, res) => {
   db.run('DELETE FROM vendedores WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
+    agendarReinicioBot();
     res.json({ message: 'Vendedor removido com sucesso' });
   });
 });
@@ -164,6 +170,7 @@ app.post('/api/valores', (req, res) => {
     [servico, preco, unidade_id, ordem || 1],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ id: this.lastID, message: 'Valor criado com sucesso' });
     }
   );
@@ -176,6 +183,7 @@ app.put('/api/valores/:id', (req, res) => {
     [servico, preco, unidade_id, ordem || 1, req.params.id],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ message: 'Valor atualizado com sucesso' });
     }
   );
@@ -184,6 +192,7 @@ app.put('/api/valores/:id', (req, res) => {
 app.delete('/api/valores/:id', (req, res) => {
   db.run('DELETE FROM valores WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
+    agendarReinicioBot();
     res.json({ message: 'Valor removido com sucesso' });
   });
 });
@@ -215,6 +224,7 @@ app.post('/api/departamentos', (req, res) => {
     [unidade_id, nome, mensagem],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ id: this.lastID, message: 'Departamento criado com sucesso' });
     }
   );
@@ -227,6 +237,7 @@ app.put('/api/departamentos/:id', (req, res) => {
     [unidade_id, nome, mensagem, req.params.id],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
+      agendarReinicioBot();
       res.json({ message: 'Departamento atualizado com sucesso' });
     }
   );
@@ -235,6 +246,7 @@ app.put('/api/departamentos/:id', (req, res) => {
 app.delete('/api/departamentos/:id', (req, res) => {
   db.run('DELETE FROM departamentos WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
+    agendarReinicioBot();
     res.json({ message: 'Departamento removido com sucesso' });
   });
 });
@@ -353,7 +365,15 @@ function pararBot() {
     return { success: false, message: 'Bot não está rodando' };
   }
 
-  botProcess.kill();
+  try {
+    // No Windows, usar taskkill para matar o processo e seus filhos (Chrome/Puppeteer)
+    const { execSync } = require('child_process');
+    execSync(`taskkill /pid ${botProcess.pid} /T /F`, { stdio: 'ignore' });
+  } catch (error) {
+    // Se taskkill falhar, tenta kill normal
+    botProcess.kill('SIGKILL');
+  }
+
   botProcess = null;
   botStatus = 'parado';
   botLogs.push('🛑 Bot parado pelo painel');
@@ -367,7 +387,7 @@ function reiniciarBot() {
     pararBot();
     setTimeout(() => {
       iniciarBot();
-    }, 2000);
+    }, 3000); // 3 segundos para garantir que Chrome fechou
   } else {
     iniciarBot();
   }

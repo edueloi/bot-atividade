@@ -251,6 +251,67 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        .bot-control {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .bot-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-rodando {
+            background: #27ae60;
+        }
+
+        .status-parado {
+            background: #95a5a6;
+        }
+
+        .status-iniciando {
+            background: #f39c12;
+        }
+
+        .status-erro {
+            background: #e74c3c;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .bot-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .bot-logs {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -261,6 +322,23 @@
         </div>
 
         <div id="alert" class="alert"></div>
+
+        <!-- CONTROLE DO BOT -->
+        <div class="bot-control">
+            <div class="bot-status">
+                <div id="status-indicator" class="status-indicator status-parado"></div>
+                <h3 id="status-text">Bot: Parado</h3>
+            </div>
+            <div class="bot-buttons">
+                <button class="btn btn-success" onclick="iniciarBot()">▶️ Iniciar Bot</button>
+                <button class="btn btn-danger" onclick="pararBot()">⏹️ Parar Bot</button>
+                <button class="btn" onclick="reiniciarBot()">🔄 Reiniciar Bot</button>
+                <button class="btn" onclick="atualizarStatusBot()">🔃 Atualizar Status</button>
+            </div>
+            <div class="bot-logs" id="bot-logs">
+                <div style="color: #888;">Aguardando logs do bot...</div>
+            </div>
+        </div>
 
         <div class="tabs">
             <button class="tab-button active" onclick="showTab('unidades')">Unidades</button>
@@ -754,7 +832,81 @@
         // Inicializar
         window.onload = () => {
             carregarUnidades();
+            atualizarStatusBot();
+            // Atualizar status do bot a cada 3 segundos
+            setInterval(atualizarStatusBot, 3000);
         };
+
+        // ==================== CONTROLE DO BOT ====================
+        async function atualizarStatusBot() {
+            try {
+                const res = await fetch(`${API_URL}/bot/status`);
+                const data = await res.json();
+                
+                const indicator = document.getElementById('status-indicator');
+                const text = document.getElementById('status-text');
+                const logsDiv = document.getElementById('bot-logs');
+                
+                // Atualizar indicador
+                indicator.className = `status-indicator status-${data.status}`;
+                
+                // Atualizar texto
+                const statusTexto = {
+                    'rodando': '🟢 Bot: Rodando',
+                    'parado': '⚫ Bot: Parado',
+                    'iniciando': '🟡 Bot: Iniciando...',
+                    'erro': '🔴 Bot: Erro'
+                };
+                text.textContent = statusTexto[data.status] || 'Bot: Desconhecido';
+                
+                // Atualizar logs
+                if (data.logs && data.logs.length > 0) {
+                    logsDiv.innerHTML = data.logs.map(log => {
+                        const escaped = log.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        return `<div>${escaped}</div>`;
+                    }).join('');
+                    logsDiv.scrollTop = logsDiv.scrollHeight;
+                } else {
+                    logsDiv.innerHTML = '<div style="color: #888;">Nenhum log disponível</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+            }
+        }
+
+        async function iniciarBot() {
+            try {
+                const res = await fetch(`${API_URL}/bot/iniciar`, { method: 'POST' });
+                const data = await res.json();
+                mostrarAlerta(data.message, data.success ? 'success' : 'error');
+                setTimeout(atualizarStatusBot, 1000);
+            } catch (error) {
+                mostrarAlerta('Erro ao iniciar bot', 'error');
+            }
+        }
+
+        async function pararBot() {
+            if (!confirm('Deseja realmente parar o bot?')) return;
+            try {
+                const res = await fetch(`${API_URL}/bot/parar`, { method: 'POST' });
+                const data = await res.json();
+                mostrarAlerta(data.message, data.success ? 'success' : 'error');
+                setTimeout(atualizarStatusBot, 1000);
+            } catch (error) {
+                mostrarAlerta('Erro ao parar bot', 'error');
+            }
+        }
+
+        async function reiniciarBot() {
+            try {
+                const res = await fetch(`${API_URL}/bot/reiniciar`, { method: 'POST' });
+                const data = await res.json();
+                mostrarAlerta(data.message, data.success ? 'success' : 'error');
+                setTimeout(atualizarStatusBot, 1000);
+            } catch (error) {
+                mostrarAlerta('Erro ao reiniciar bot', 'error');
+            }
+        }
     </script>
 </body>
 </html>
