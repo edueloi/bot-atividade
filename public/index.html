@@ -710,6 +710,7 @@
                 <!-- Tab Configurações -->
                 <div id="tab-configuracoes" class="tab-content">
                     <h1>⚙️ Configurações do Bot</h1>
+                    <div id="alert-config" class="alert"></div>
                     
                     <div class="card">
                         <h2>📝 Mensagens Personalizadas</h2>
@@ -787,11 +788,29 @@
         // Alias para compatibilidade
         const showTab = window.showTab;
 
-        function mostrarAlerta(mensagem, tipo) {
-            const alert = document.getElementById('alert');
-            alert.className = `alert alert-${tipo} show`;
-            alert.textContent = mensagem;
-            setTimeout(() => alert.classList.remove('show'), 3000);
+        function mostrarAlerta(mensagem, tipo, targetId) {
+            const targets = [];
+
+            if (targetId) {
+                const target = document.getElementById(targetId);
+                if (target) targets.push(target);
+            } else {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === 'tab-configuracoes') {
+                    const configAlert = document.getElementById('alert-config');
+                    if (configAlert) targets.push(configAlert);
+                }
+                const mainAlert = document.getElementById('alert');
+                if (mainAlert) targets.push(mainAlert);
+            }
+
+            if (!targets.length) return;
+
+            targets.forEach((alert) => {
+                alert.className = `alert alert-${tipo} show`;
+                alert.textContent = mensagem;
+                setTimeout(() => alert.classList.remove('show'), 3000);
+            });
         }
 
         async function carregarUnidades() {
