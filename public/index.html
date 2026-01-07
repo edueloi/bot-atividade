@@ -587,6 +587,16 @@
                         <button class="btn" onclick="reiniciarBot()">Reiniciar Bot</button>
                         <button class="btn" onclick="atualizarStatusBot()">Atualizar Status</button>
                     </div>
+                    
+                    <!-- QR Code Section -->
+                    <div id="qr-code-section" style="display: none; text-align: center; padding: 20px; background: #f8fafc; border-radius: 12px; margin: 20px 0;">
+                        <h3 style="margin-bottom: 15px; color: #0f172a;">📱 Escaneie o QR Code com seu WhatsApp</h3>
+                        <div style="background: white; padding: 20px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <img id="qr-code-img" src="" alt="QR Code" style="max-width: 300px; width: 100%;">
+                        </div>
+                        <p style="margin-top: 15px; color: #64748b; font-size: 14px;">Abra o WhatsApp → Menu → Dispositivos Conectados → Conectar Dispositivo</p>
+                    </div>
+                    
                     <div class="bot-logs" id="bot-logs">
                         <div style="color: #888;">Aguardando logs do bot...</div>
                     </div>
@@ -807,6 +817,8 @@
         </div>
     </div>
 
+    <div id="toast-container" class="toast-container"></div>
+
     <script>
         const API_URL = 'http://localhost:3000/api';
         
@@ -827,6 +839,22 @@
         // Alias para compatibilidade
         const showTab = window.showTab;
 
+        function showToast(mensagem, tipo) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const toastType = tipo || 'success';
+            toast.className = `toast toast-${toastType}`;
+            toast.textContent = mensagem;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'toastOut 0.25s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
         function mostrarAlerta(mensagem, tipo, targetId) {
             const targets = [];
 
@@ -843,13 +871,13 @@
                 if (mainAlert) targets.push(mainAlert);
             }
 
-            if (!targets.length) return;
-
             targets.forEach((alert) => {
                 alert.className = `alert alert-${tipo} show`;
                 alert.textContent = mensagem;
                 setTimeout(() => alert.classList.remove('show'), 3000);
             });
+
+            showToast(mensagem, tipo);
         }
 
         async function carregarUnidades() {
@@ -1232,6 +1260,18 @@
                 };
                 text.textContent = statusTexto[data.status] || 'Bot: Desconhecido';
                 textPill.textContent = statusTexto[data.status] || 'Desconhecido';
+
+                // QR Code handling
+                const qrSection = document.getElementById('qr-code-section');
+                const qrImg = document.getElementById('qr-code-img');
+                
+                if (data.qrCode && data.status === 'iniciando') {
+                    qrImg.src = `data:image/png;base64,${data.qrCode}`;
+                    qrSection.style.display = 'block';
+                } else {
+                    qrSection.style.display = 'none';
+                    qrImg.src = '';
+                }
 
                 if (data.logs && data.logs.length > 0) {
                     logsDiv.innerHTML = data.logs.map(log => {

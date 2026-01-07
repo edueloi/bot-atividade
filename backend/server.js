@@ -11,6 +11,7 @@ const PORT = 3000;
 let botProcess = null;
 let botStatus = 'parado'; // 'parado', 'iniciando', 'rodando', 'erro'
 let botLogs = [];
+let qrCodeData = null; // Armazenar QR Code
 
 // Middlewares
 app.use(cors());
@@ -339,8 +340,17 @@ function iniciarBot() {
     botLogs.push(log);
     if (botLogs.length > 100) botLogs.shift(); // Manter apenas últimas 100 linhas
     
-    if (log.includes('Bot iniciado com sucesso')) {
+    // Capturar QR Code (procurar por base64 do QR)
+    const qrMatch = log.match(/QR_CODE_BASE64:(.+)/);
+    if (qrMatch) {
+      qrCodeData = qrMatch[1].trim();
+      console.log('📱 QR Code capturado para o painel');
+    }
+    
+    // Limpar QR Code quando conectar
+    if (log.includes('Bot iniciado com sucesso') || log.includes('Conectado')) {
       botStatus = 'rodando';
+      qrCodeData = null; // Limpar QR após conectar
     }
   });
 
@@ -399,7 +409,8 @@ app.get('/api/bot/status', (req, res) => {
   res.json({
     status: botStatus,
     rodando: botProcess !== null,
-    logs: botLogs.slice(-50) // Últimas 50 linhas
+    logs: botLogs.slice(-50), // Últimas 50 linhas
+    qrCode: qrCodeData // Adicionar QR Code ao status
   });
 });
 

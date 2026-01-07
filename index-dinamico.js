@@ -36,6 +36,8 @@ recarregarConfiguracoes().then(() => {
         console.log(asciiQR);
         console.log('Número de tentativas:', attempts);
         console.log('QR Code URL:', urlCode);
+        // Enviar QR Code base64 para o servidor capturar
+        console.log(`QR_CODE_BASE64:${base64Qrimg}`);
       },
       statusFind: (statusSession, session) => {
         console.log('Status da sessão:', statusSession);
