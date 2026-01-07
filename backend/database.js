@@ -98,6 +98,52 @@ db.serialize(() => {
     )
   `);
 
+  // Tabela de clientes
+  db.run(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      cpf TEXT UNIQUE NOT NULL,
+      telefone TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Tabela de profissionais
+  db.run(`
+    CREATE TABLE IF NOT EXISTS profissionais (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unidade_id INTEGER NOT NULL,
+      nome TEXT NOT NULL,
+      numero TEXT NOT NULL,
+      ativo INTEGER DEFAULT 1,
+      ordem INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (unidade_id) REFERENCES unidades(id)
+    )
+  `);
+
+  // Tabela de atendimentos (solicitacoes para vendedor/profissional)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS atendimentos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      unidade_id INTEGER NOT NULL,
+      tipo_atendente TEXT NOT NULL,
+      atendente_id INTEGER NOT NULL,
+      atendente_nome TEXT NOT NULL,
+      cliente_nome TEXT,
+      cliente_cpf TEXT,
+      cliente_telefone TEXT,
+      assunto TEXT,
+      status TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+
 
   // Tabela de configurações gerais do bot
   db.run(`

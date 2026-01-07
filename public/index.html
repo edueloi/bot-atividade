@@ -640,6 +640,108 @@
             background: #ffffff;
         }
 
+
+
+        .chat-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 16px;
+        }
+
+        .chat-list {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px;
+            max-height: 520px;
+            overflow-y: auto;
+            display: grid;
+            gap: 10px;
+        }
+
+        .chat-item {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            background: #ffffff;
+        }
+
+        .chat-item.active {
+            border-color: #60a5fa;
+            background: rgba(37, 99, 235, 0.08);
+        }
+
+        .chat-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .chat-preview {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .chat-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .chat-thread {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            min-height: 420px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            display: grid;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .chat-bubble {
+            max-width: 70%;
+            padding: 10px 12px;
+            border-radius: 14px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .chat-bubble.incoming {
+            background: #f1f5f9;
+            color: var(--text);
+            justify-self: start;
+        }
+
+        .chat-bubble.outgoing {
+            background: #2563eb;
+            color: #ffffff;
+            justify-self: end;
+        }
+
+        .chat-time {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        @media (max-width: 900px) {
+            .chat-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -657,10 +759,13 @@
                 <button class="tab-button active" onclick="showTab('unidades', this)">Unidades</button>
                 <button class="tab-button" onclick="showTab('departamentos', this)">Departamentos</button>
                 <button class="tab-button" onclick="showTab('vendedores', this)">Vendedores</button>
+                <button class="tab-button" onclick="showTab('profissionais', this)">Profissionais</button>
+                <button class="tab-button" onclick="showTab('clientes', this)">Clientes</button>
                 <button class="tab-button" onclick="showTab('valores', this)">Valores</button>
                 <button class="tab-button" onclick="showTab('configuracoes', this)">Configuracoes</button>
                 <button class="tab-button" onclick="showTab('relatorios', this)">Relatorios</button>
                 <button class="tab-button" onclick="showTab('filas', this)">Filas</button>
+                <button class="tab-button" onclick="showTab('conversas', this)">Conversas</button>
             </nav>
 
             <div class="sidebar-card">
@@ -825,7 +930,85 @@
                     </div>
                 </div>
 
-                <div id="tab-valores" class="tab-content">
+                                <div id="tab-profissionais" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Profissionais</h2>
+                            <p class="section-subtitle">Equipe de atendimento especializado.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Cadastro de Profissional</h2>
+                        <form id="form-profissional" onsubmit="salvarProfissional(event)">
+                            <input type="hidden" id="profissional-id">
+                            <div class="form-group">
+                                <label>Unidade</label>
+                                <select id="profissional-unidade" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do Profissional</label>
+                                <input type="text" id="profissional-nome" placeholder="Ex: Dra. Carla" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Numero WhatsApp (com codigo do pais)</label>
+                                <input type="text" id="profissional-numero" placeholder="Ex: 5515999990007" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="profissional-ativo" required>
+                                    <option value="1">Ativo</option>
+                                    <option value="0">Inativo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Ordem de Exibicao</label>
+                                <input type="number" id="profissional-ordem" value="1" required>
+                            </div>
+                            <button type="submit" class="btn">Salvar Profissional</button>
+                            <button type="button" class="btn btn-danger" onclick="limparFormProfissional()">Cancelar</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Profissionais Cadastrados</h2>
+                        <div id="lista-profissionais" class="item-list"></div>
+                    </div>
+                </div>
+
+                <div id="tab-clientes" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Gerenciar Clientes</h2>
+                            <p class="section-subtitle">Cadastro de clientes e identificacao por CPF.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Cadastro de Cliente</h2>
+                        <form id="form-cliente" onsubmit="salvarCliente(event)">
+                            <input type="hidden" id="cliente-id">
+                            <div class="form-group">
+                                <label>Nome</label>
+                                <input type="text" id="cliente-nome" placeholder="Ex: Joao Silva" required>
+                            </div>
+                            <div class="form-group">
+                                <label>CPF</label>
+                                <input type="text" id="cliente-cpf" placeholder="Ex: 00000000000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone (WhatsApp)</label>
+                                <input type="text" id="cliente-telefone" placeholder="Ex: 5515999990001" required>
+                            </div>
+                            <button type="submit" class="btn">Salvar Cliente</button>
+                            <button type="button" class="btn btn-danger" onclick="limparFormCliente()">Cancelar</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Clientes Cadastrados</h2>
+                        <div id="lista-clientes" class="item-list"></div>
+                    </div>
+                </div>
+<div id="tab-valores" class="tab-content">
                     <div class="section-header">
                         <div>
                             <h2>Gerenciar Valores e Servicos</h2>
@@ -998,6 +1181,23 @@
                     <div class="card">
                         <h2>Filas ativas</h2>
                         <div id="lista-filas" class="queue-list"></div>
+                    </div>
+                </div>
+
+
+                <div id="tab-conversas" class="tab-content">
+                    <div class="section-header">
+                        <div>
+                            <h2>Conversas</h2>
+                            <p class="section-subtitle">Acompanhe todas as mensagens do WhatsApp em tempo real.</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-layout">
+                        <div id="lista-conversas" class="chat-list"></div>
+                        <div class="chat-thread">
+                            <div id="conversa-detalhe" class="chat-messages"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -1219,6 +1419,100 @@
             }
         }
 
+
+        let conversaAtual = null;
+
+        function formatHora(dataHora) {
+            if (!dataHora) return '';
+            const data = new Date(dataHora);
+            if (Number.isNaN(data.getTime())) return '';
+            return data.toLocaleString('pt-BR');
+        }
+
+        function limparTexto(texto) {
+            if (!texto) return '';
+            return texto.length > 80 ? `${texto.slice(0, 77)}...` : texto;
+        }
+
+        async function carregarConversas() {
+            try {
+                const res = await fetch(`${API_URL}/conversas?limit=200`);
+                const conversas = await res.json();
+                const lista = document.getElementById('lista-conversas');
+                if (!conversas || conversas.length === 0) {
+                    lista.innerHTML = '<div class="item">Nenhuma conversa registrada.</div>';
+                    return;
+                }
+
+                lista.innerHTML = conversas.map((conv) => {
+                    let preview = '';
+                    try {
+                        const dados = conv.ultimo_dados ? JSON.parse(conv.ultimo_dados) : {};
+                        preview = limparTexto(dados.mensagem || '');
+                    } catch (error) {
+                        preview = '';
+                    }
+
+                    const activeClass = conv.user_id === conversaAtual ? 'active' : '';
+                    return `
+                        <div class="chat-item ${activeClass}" onclick="abrirConversa('${conv.user_id}')">
+                            <div class="chat-top">
+                                <strong>${formatNumero(conv.user_id)}</strong>
+                                <span class="chat-time">${formatHora(conv.ultimo_hora || conv.updated_at)}</span>
+                            </div>
+                            <div class="chat-preview">${preview || 'Sem mensagens'}</div>
+                            <div class="chat-meta">Status: ${conv.status || '---'}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Erro ao carregar conversas:', error);
+                mostrarAlerta('Erro ao carregar conversas', 'error');
+            }
+        }
+
+        async function abrirConversa(userId) {
+            conversaAtual = userId;
+            await carregarConversa(userId);
+            carregarConversas();
+        }
+
+        async function carregarConversa(userId) {
+            try {
+                const res = await fetch(`${API_URL}/conversas/${userId}`);
+                const mensagens = await res.json();
+                const container = document.getElementById('conversa-detalhe');
+
+                if (!mensagens || mensagens.length === 0) {
+                    container.innerHTML = '<div class="item">Nenhuma mensagem encontrada.</div>';
+                    return;
+                }
+
+                container.innerHTML = mensagens.map((msg) => {
+                    let texto = '';
+                    try {
+                        const dados = msg.dados ? JSON.parse(msg.dados) : {};
+                        texto = dados.mensagem || '';
+                    } catch (error) {
+                        texto = '';
+                    }
+
+                    const tipo = msg.tipo === 'mensagem_enviada' ? 'outgoing' : 'incoming';
+                    return `
+                        <div class="chat-bubble ${tipo}">
+                            <div>${texto || '-'}</div>
+                            <div class="chat-time">${formatHora(msg.data_hora)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.scrollTop = container.scrollHeight;
+            } catch (error) {
+                console.error('Erro ao carregar conversa:', error);
+                mostrarAlerta('Erro ao carregar conversa', 'error');
+            }
+        }
+
         async function carregarUnidades() {
             const res = await fetch(`${API_URL}/unidades`);
             const unidades = await res.json();
@@ -1238,7 +1532,7 @@
                 </div>
             `).join('');
 
-            const selects = ['depto-unidade', 'vendedor-unidade', 'valor-unidade'];
+            const selects = ['depto-unidade', 'vendedor-unidade', 'profissional-unidade', 'valor-unidade'];
             selects.forEach(id => {
                 const select = document.getElementById(id);
                 select.innerHTML = '<option value="">Selecione...</option>' +
@@ -1541,6 +1835,9 @@
                 case 'filas':
                     carregarFilas();
                     break;
+                case 'conversas':
+                    carregarConversas();
+                    break;
             }
         }
 
@@ -1551,6 +1848,7 @@
             setInterval(atualizarStatusBot, 3000);
             carregarRelatorios();
             carregarFilas();
+            carregarConversas();
             setInterval(() => {
                 const activeTab = document.querySelector('.tab-content.active');
                 if (activeTab && activeTab.id === 'tab-filas') {
@@ -1558,6 +1856,9 @@
                 }
                 if (activeTab && activeTab.id === 'tab-relatorios') {
                     carregarRelatorios();
+                }
+                if (activeTab && activeTab.id === 'tab-conversas') {
+                    carregarConversas();
                 }
             }, 30000);
             

@@ -504,6 +504,69 @@ app.post('/api/fila/encerrar', async (req, res) => {
   }
 });
 
+
+
+// ==================== ROTAS - CONVERSAS ====================
+app.get('/api/conversas', async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit || '50', 10), 500));
+    const rows = await dbAllAsync(
+      `
+      SELECT
+        c.user_id,
+        c.status,
+        c.updated_at,
+        (
+          SELECT i.tipo
+          FROM interacoes i
+          WHERE i.user_id = c.user_id AND i.tipo IN ('mensagem_recebida', 'mensagem_enviada')
+          ORDER BY i.data_hora DESC
+          LIMIT 1
+        ) as ultimo_tipo,
+        (
+          SELECT i.dados
+          FROM interacoes i
+          WHERE i.user_id = c.user_id AND i.tipo IN ('mensagem_recebida', 'mensagem_enviada')
+          ORDER BY i.data_hora DESC
+          LIMIT 1
+        ) as ultimo_dados,
+        (
+          SELECT i.data_hora
+          FROM interacoes i
+          WHERE i.user_id = c.user_id AND i.tipo IN ('mensagem_recebida', 'mensagem_enviada')
+          ORDER BY i.data_hora DESC
+          LIMIT 1
+        ) as ultimo_hora
+      FROM conversas c
+      ORDER BY c.updated_at DESC
+      LIMIT ?
+      `,
+      [limit]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/conversas/:userId', async (req, res) => {
+  try {
+    const rows = await dbAllAsync(
+      `
+      SELECT tipo, dados, data_hora
+      FROM interacoes
+      WHERE user_id = ? AND tipo IN ('mensagem_recebida', 'mensagem_enviada')
+      ORDER BY data_hora ASC
+      `,
+      [req.params.userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== CONTROLE DO BOT ====================
 // Função para iniciar o bot
 function iniciarBot() {

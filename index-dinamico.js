@@ -69,6 +69,15 @@ recarregarConfiguracoes().then(() => {
 
 // Função principal do bot
 function start(client) {
+  async function enviarMensagem(userId, mensagem, contexto) {
+    try {
+      const chatId = toChatId(userId);     await client.sendText(chatId, mensagem);
+      botIntegration.registrarMensagemEnviada(userId, mensagem, contexto);
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+    }
+  }
+
   console.log('✅ Bot iniciado com sucesso!');
 
   // Recarregar configurações a cada 5 minutos
@@ -110,13 +119,13 @@ function start(client) {
           
           // Enviar mensagem de boas-vindas
           const boasVindas = config.config.mensagem_boas_vindas || '👋 Olá! Seja bem-vindo(a)!';
-          await client.sendText(userId, boasVindas);
+          await enviarMensagem(userId, boasVindas);
           
           // Aguardar 1 segundo e enviar menu
           setTimeout(async () => {
             const menuPrincipal = config.config.mensagem_menu_principal || '📋 Menu Principal';
             const mensagem = menuPrincipal + '\n\n' + botIntegration.gerarMenuUnidades(config.unidades);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
           }, 1000);
           
           botIntegration.registrarInteracao(userId, 'primeira_mensagem', { mensagem: userMessage });
@@ -130,7 +139,7 @@ function start(client) {
           state.unidadeId = null;
           const menuPrincipal = config.config.mensagem_menu_principal || '📋 Menu Principal';
           const mensagem = menuPrincipal + '\n\n' + botIntegration.gerarMenuUnidades(config.unidades);
-          await client.sendText(userId, mensagem);
+          await enviarMensagem(userId, mensagem);
           return;
         }
 
@@ -144,11 +153,11 @@ function start(client) {
             state.unidadeNome = unidade.nome;
             
             const mensagem = botIntegration.gerarMenuUnidade(unidade);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
             botIntegration.registrarInteracao(userId, 'selecao_unidade', { unidade: unidade.nome });
           } else {
             const msgInvalida = config.config.mensagem_opcao_invalida || '❌ Opção inválida!';
-            await client.sendText(userId, msgInvalida);
+            await enviarMensagem(userId, msgInvalida);
           }
         }
 
@@ -159,7 +168,7 @@ function start(client) {
           // Opção 1: Endereço
           if (userInput === '1') {
             const mensagem = botIntegration.gerarMensagemEndereco(unidade);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
             botIntegration.registrarInteracao(userId, 'consulta_endereco', { unidade: unidade.nome });
           }
           
@@ -167,7 +176,7 @@ function start(client) {
           else if (userInput === '2') {
             const valores = config.valores[unidade.id] || [];
             const mensagem = botIntegration.gerarMensagemValores(unidade, valores);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
             botIntegration.registrarInteracao(userId, 'consulta_valores', { unidade: unidade.nome });
           }
           
@@ -176,7 +185,7 @@ function start(client) {
             state.menu = 'departamentos';
             const departamentos = config.departamentos[unidade.id] || [];
             const mensagem = botIntegration.gerarMenuDepartamentos(unidade, departamentos);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
           }
           
           // Opção 0: Voltar
@@ -184,15 +193,39 @@ function start(client) {
             state.menu = 'inicial';
             state.unidadeId = null;
             const mensagem = botIntegration.gerarMenuUnidades(config.unidades);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
           }
           
           else {
-            await client.sendText(userId, '❓ Opção inválida. Digite um número válido ou *0* para voltar.');
+            await enviarMensagem(userId, '❓ Opção inválida. Digite um número válido ou *0* para voltar.');
           }
         }
 
-        // === MENU DE DEPARTAMENTOS ===
+
+        // === MENU DE INFORMACOES (ENDERECO/VALORES) ===
+        else if (state.menu === 'endereco' || state.menu === 'valores') {
+          const unidade = config.unidades.find(u => u.id === state.unidadeId);
+          if (userInput === '0') {
+            state.menu = 'unidade';
+            const mensagem = botIntegration.gerarMenuUnidade(unidade);
+            await enviarMensagem(userId, mensagem);
+          }
+          else if (userInput === '3') {
+            state.menu = 'vendedores';
+            const vendedores = config.vendedores[unidade.id] || [];
+            const mensagem = botIntegration.gerarMenuVendedores(unidade, vendedores);
+            await enviarMensagem(userId, mensagem);
+          }
+          else if (userInput === '4') {
+            state.menu = 'profissionais';
+            const profissionais = config.profissionais[unidade.id] || [];
+            const mensagem = botIntegration.gerarMenuProfissionais(unidade, profissionais);
+            await enviarMensagem(userId, mensagem);
+          }
+          else {
+            await enviarMensagem(userId, 'Opcao invalida. Digite 0 para voltar, 3 para vendas ou 4 para profissional.');
+          }
+        }       // === MENU DE DEPARTAMENTOS ===
         else if (state.menu === 'departamentos') {
           const unidade = config.unidades.find(u => u.id === state.unidadeId);
           const departamentos = config.departamentos[unidade.id] || [];
@@ -200,7 +233,7 @@ function start(client) {
           if (userInput === '0') {
             state.menu = 'unidade';
             const mensagem = botIntegration.gerarMenuUnidade(unidade);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
           }
           else if (/^[1-9]$/.test(userInput)) {
             const index = parseInt(userInput) - 1;
@@ -211,14 +244,14 @@ function start(client) {
                 state.menu = 'vendedores';
                 const vendedores = config.vendedores[unidade.id] || [];
                 const mensagem = botIntegration.gerarMenuVendedores(unidade, vendedores);
-                await client.sendText(userId, mensagem);
+                await enviarMensagem(userId, mensagem);
               } else {
                 const filaInfo = await botIntegration.entrarFilaAtendimento(userId, unidade.id, depto.id);
                 const aviso = filaInfo.status === 'em_atendimento'
                   ? 'Voce esta sendo atendido agora.'
                   : `Voce entrou na fila. Sua posicao e ${filaInfo.position}. Voce sera avisado a cada ${filaConfig.intervaloAvisoSeg} segundos.`;
 
-                await client.sendText(userId, `${depto.mensagem}
+                await enviarMensagem(userId, `${depto.mensagem}
 
 ${aviso}`);
                 botIntegration.registrarInteracao(userId, 'contato_departamento', { 
@@ -232,7 +265,7 @@ ${aviso}`);
               const nomesDeptos = ['Administrativo', 'Vendas', 'Agendamento', 'Financeiro'];
               const deptoNome = nomesDeptos[index] || 'Departamento';
               
-              await client.sendText(
+              await enviarMensagem(
                 userId,
                 `?? *${deptoNome}*
 
@@ -259,11 +292,41 @@ ${aviso}`);
             }
           }
           else {
-            await client.sendText(userId, '? Opcao invalida. Digite um numero valido ou *0* para voltar.');
+            await enviarMensagem(userId, '? Opcao invalida. Digite um numero valido ou *0* para voltar.');
           }
         }
 
-        // === MENU DE VENDEDORES ===
+
+        // === MENU DE PROFISSIONAIS ===
+        else if (state.menu === 'profissionais') {
+          const unidade = config.unidades.find(u => u.id === state.unidadeId);
+          const profissionais = config.profissionais[unidade.id] || [];
+          
+          if (userInput === '0') {
+            state.menu = 'unidade';
+            const mensagem = botIntegration.gerarMenuUnidade(unidade);
+            await enviarMensagem(userId, mensagem);
+          }
+          else if (/^[1-9]$/.test(userInput)) {
+            const index = parseInt(userInput) - 1;
+            if (profissionais[index]) {
+              const profissional = profissionais[index];
+              state.pendingTransfer = {
+                tipo: 'profissional',
+                id: profissional.id,
+                nome: profissional.nome,
+                numero: profissional.numero,
+                unidadeId: unidade.id
+              };
+              await iniciarColetaAtendimento(userId, state);
+            } else {
+              await enviarMensagem(userId, 'Profissional nao encontrado. Digite *0* para voltar.');
+            }
+          }
+          else {
+            await enviarMensagem(userId, 'Opcao invalida. Digite um numero valido ou *0* para voltar.');
+          }
+        }       // === MENU DE VENDEDORES ===
         else if (state.menu === 'vendedores') {
           const unidade = config.unidades.find(u => u.id === state.unidadeId);
           const vendedores = config.vendedores[unidade.id] || [];
@@ -272,14 +335,14 @@ ${aviso}`);
             state.menu = 'departamentos';
             const departamentos = config.departamentos[unidade.id] || [];
             const mensagem = botIntegration.gerarMenuDepartamentos(unidade, departamentos);
-            await client.sendText(userId, mensagem);
+            await enviarMensagem(userId, mensagem);
           }
           else if (/^[1-9]$/.test(userInput)) {
             const index = parseInt(userInput) - 1;
             if (vendedores[index]) {
               const vendedor = vendedores[index];
               const mensagem = botIntegration.gerarMensagemTransferencia(vendedor);
-              await client.sendText(userId, mensagem);
+              await enviarMensagem(userId, mensagem);
               
               botIntegration.registrarInteracao(userId, 'transferencia_vendedor', { 
                 unidade: unidade.nome,
@@ -291,17 +354,17 @@ ${aviso}`);
               console.log(`[TRANSFERÊNCIA] ${userId} -> ${vendedor.nome} (${vendedor.numero})`);
               state.menu = 'inicial';
             } else {
-              await client.sendText(userId, '❓ Vendedor não encontrado. Digite *0* para voltar.');
+              await enviarMensagem(userId, '❓ Vendedor não encontrado. Digite *0* para voltar.');
             }
           }
           else {
-            await client.sendText(userId, '❓ Opção inválida. Digite um número válido ou *0* para voltar.');
+            await enviarMensagem(userId, '❓ Opção inválida. Digite um número válido ou *0* para voltar.');
           }
         }
 
         // === OPÇÃO NÃO RECONHECIDA ===
         else {
-          await client.sendText(
+          await enviarMensagem(
             userId,
             '❓ Opção não reconhecida.\n\n' +
             'Digite *menu* para ver as opções disponíveis.'

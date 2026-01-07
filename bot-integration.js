@@ -100,6 +100,52 @@ function inicializarBanco() {
                 )
             `);
 
+  // Tabela de clientes
+  db.run(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      cpf TEXT UNIQUE NOT NULL,
+      telefone TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Tabela de profissionais
+  db.run(`
+    CREATE TABLE IF NOT EXISTS profissionais (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unidade_id INTEGER NOT NULL,
+      nome TEXT NOT NULL,
+      numero TEXT NOT NULL,
+      ativo INTEGER DEFAULT 1,
+      ordem INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (unidade_id) REFERENCES unidades(id)
+    )
+  `);
+
+  // Tabela de atendimentos (solicitacoes para vendedor/profissional)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS atendimentos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      unidade_id INTEGER NOT NULL,
+      tipo_atendente TEXT NOT NULL,
+      atendente_id INTEGER NOT NULL,
+      atendente_nome TEXT NOT NULL,
+      cliente_nome TEXT,
+      cliente_cpf TEXT,
+      cliente_telefone TEXT,
+      assunto TEXT,
+      status TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+
 
             // Tabela de configurações gerais do bot
             db.run(`
@@ -366,6 +412,26 @@ function gerarMenuDepartamentos(unidade, departamentos) {
     return mensagem;
 }
 
+
+// Gerar menu de profissionais
+function gerarMenuProfissionais(unidade, profissionais) {
+    let mensagem = `????? *Profissionais - ${unidade.nome}*\n\n`;
+
+    if (profissionais && profissionais.length > 0) {
+        profissionais.forEach((profissional, index) => {
+            mensagem += `${index + 1}?? - ${profissional.nome}\n`;
+        });
+        mensagem += '0?? - Voltar\n\n';
+        mensagem += 'Digite o numero do profissional para solicitar atendimento.';
+    } else {
+        mensagem += '? Nenhum profissional disponivel no momento.\n';
+        mensagem += 'Por favor, tente novamente mais tarde.\n\n';
+        mensagem += 'Digite *0* para voltar.';
+    }
+
+    return mensagem;
+} 
+
 // Gerar menu de vendedores
 function gerarMenuVendedores(unidade, vendedores) {
     let mensagem = `💼 *Equipe de Vendas - ${unidade.nome}*\n\n`;
@@ -573,6 +639,9 @@ async function processarFila(client, options = {}) {
         const precisaAviso = !f.last_notified_at || new Date(f.last_notified_at).getTime() < new Date(f.updated_at).getTime();
         if (precisaAviso) {
             await client.sendText(f.user_id, 'Seu atendimento foi finalizado. Se precisar de algo, digite *menu*.');
+            registrarMensagemEnviada(f.user_id, 'Seu atendimento foi finalizado. Se precisar de algo, digite *menu*.', {
+                tipo: 'fila_finalizada'
+            });
             await dbRun(
                 'UPDATE fila_atendimentos SET status = "encerrado", last_notified_at = datetime("now", "localtime"), updated_at = datetime("now", "localtime") WHERE id = ?',
                 [f.id]
@@ -608,6 +677,9 @@ async function processarFila(client, options = {}) {
             await atualizarStatusConversa(proximo.user_id, 'em_atendimento', proximo.unidade_id, proximo.departamento_id);
             registrarInteracao(proximo.user_id, 'atendimento_iniciado', { unidade_id: proximo.unidade_id, departamento_id: proximo.departamento_id });
             await client.sendText(proximo.user_id, 'Agora e a sua vez! Um atendente vai falar com voce em seguida.');
+            registrarMensagemEnviada(proximo.user_id, 'Agora e a sua vez! Um atendente vai falar com voce em seguida.', {
+                tipo: 'fila_promocao'
+            });
             aguardando = aguardando.slice(1);
         }
 
@@ -625,6 +697,9 @@ async function processarFila(client, options = {}) {
                     await atualizarStatusConversa(filaItem.user_id, 'abandonada', filaItem.unidade_id, filaItem.departamento_id);
                     registrarInteracao(filaItem.user_id, 'fila_abandonada', { unidade_id: filaItem.unidade_id, departamento_id: filaItem.departamento_id, motivo: 'timeout' });
                     await client.sendText(filaItem.user_id, 'Sua fila expirou por inatividade. Digite *menu* para voltar.');
+                    registrarMensagemEnviada(filaItem.user_id, 'Sua fila expirou por inatividade. Digite *menu* para voltar.', {
+                        tipo: 'fila_timeout'
+                    });
                     continue;
                 }
             }
@@ -638,6 +713,10 @@ async function processarFila(client, options = {}) {
             if (!lastNotified || agora - lastNotified >= intervaloAvisoMs) {
                 const posicao = i + 1;
                 await client.sendText(filaItem.user_id, `Voce esta na fila do atendimento. Sua posicao atual e ${posicao}.`);
+                registrarMensagemEnviada(filaItem.user_id, `Voce esta na fila do atendimento. Sua posicao atual e ${posicao}.`, {
+                    tipo: 'fila_aviso',
+                    posicao
+                });
                 await dbRun(
                     'UPDATE fila_atendimentos SET last_notified_at = datetime("now", "localtime") WHERE id = ?',
                     [filaItem.id]
@@ -684,6 +763,7 @@ module.exports = {
     gerarMensagemTransferencia,
     registrarInteracao,
     registrarMensagemRecebida,
+    registrarMensagemEnviada,
     iniciarConversaSeNecessario,
     atualizarUltimaMensagemConversa,
     atualizarStatusConversa,
