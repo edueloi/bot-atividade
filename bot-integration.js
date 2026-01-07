@@ -281,6 +281,7 @@ async function carregarConfiguracoes() {
             unidades: [],
             departamentos: {},
             vendedores: {},
+            profissionais: {},
             valores: {},
             config: {}
         };
@@ -318,17 +319,28 @@ async function carregarConfiguracoes() {
                             config.vendedores[v.unidade_id].push(v);
                         });
 
-                        // Carregar valores
-                        db.all('SELECT * FROM valores ORDER BY unidade_id, ordem', (err, valores) => {
+                        // Carregar profissionais
+                        db.all('SELECT * FROM profissionais WHERE ativo = 1 ORDER BY ordem', (err, profissionais) => {
                             if (err) return reject(err);
-                            valores.forEach(v => {
-                                if (!config.valores[v.unidade_id]) {
-                                    config.valores[v.unidade_id] = [];
+                            profissionais.forEach(p => {
+                                if (!config.profissionais[p.unidade_id]) {
+                                    config.profissionais[p.unidade_id] = [];
                                 }
-                                config.valores[v.unidade_id].push(v);
+                                config.profissionais[p.unidade_id].push(p);
                             });
 
-                            resolve(config);
+                            // Carregar valores
+                            db.all('SELECT * FROM valores ORDER BY unidade_id, ordem', (err, valores) => {
+                                if (err) return reject(err);
+                                valores.forEach(v => {
+                                    if (!config.valores[v.unidade_id]) {
+                                        config.valores[v.unidade_id] = [];
+                                    }
+                                    config.valores[v.unidade_id].push(v);
+                                });
+
+                                resolve(config);
+                            });
                         });
                     });
                 });
@@ -514,6 +526,77 @@ function registrarMensagemEnviada(userId, mensagem, contexto) {
         dados.contexto = contexto;
     }
     registrarInteracao(userId, 'mensagem_enviada', dados);
+}
+
+// Clientes
+async function obterClientePorTelefone(telefone) {
+    return dbGet('SELECT * FROM clientes WHERE telefone = ? LIMIT 1', [telefone]);
+}
+
+async function salvarCliente(nome, cpf, telefone) {
+    const existente = await dbGet('SELECT id FROM clientes WHERE telefone = ? OR cpf = ? LIMIT 1', [telefone, cpf]);
+    if (existente) {
+        await dbRun(
+            'UPDATE clientes SET nome = ?, cpf = ?, telefone = ?, updated_at = datetime("now", "localtime") WHERE id = ?',
+            [nome, cpf, telefone, existente.id]
+        );
+        return existente.id;
+    }
+    const result = await dbRun(
+        'INSERT INTO clientes (nome, cpf, telefone, updated_at) VALUES (?, ?, ?, datetime("now", "localtime"))',
+        [nome, cpf, telefone]
+    );
+    return result.lastID;
+}
+
+// Atendentes
+async function obterVendedorPorNumero(numero) {
+    return dbGet('SELECT * FROM vendedores WHERE numero = ? AND ativo = 1 LIMIT 1', [numero]);
+}
+
+async function obterProfissionalPorNumero(numero) {
+    return dbGet('SELECT * FROM profissionais WHERE numero = ? AND ativo = 1 LIMIT 1', [numero]);
+}
+
+// Atendimentos
+async function registrarAtendimento(dados) {
+    const result = await dbRun(
+        'INSERT INTO atendimentos (user_id, unidade_id, tipo_atendente, atendente_id, atendente_nome, cliente_nome, cliente_cpf, cliente_telefone, assunto, status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"))',
+        [
+            dados.user_id,
+            dados.unidade_id,
+            dados.tipo_atendente,
+            dados.atendente_id,
+            dados.atendente_nome,
+            dados.cliente_nome,
+            dados.cliente_cpf,
+            dados.cliente_telefone,
+            dados.assunto,
+            dados.status
+        ]
+    );
+    return result.lastID;
+}
+
+async function atualizarAtendimentoStatus(atendimentoId, status) {
+    await dbRun(
+        'UPDATE atendimentos SET status = ?, updated_at = datetime("now", "localtime") WHERE id = ?',
+        [status, atendimentoId]
+    );
+}
+
+async function obterAtendimentoPendentePorAtendente(tipo, atendenteId) {
+    return dbGet(
+        'SELECT * FROM atendimentos WHERE tipo_atendente = ? AND atendente_id = ? AND status = "pendente" ORDER BY created_at ASC LIMIT 1',
+        [tipo, atendenteId]
+    );
+}
+
+async function obterAtendimentoAtivoPorAtendente(tipo, atendenteId) {
+    return dbGet(
+        'SELECT * FROM atendimentos WHERE tipo_atendente = ? AND atendente_id = ? AND status = "aceito" ORDER BY created_at DESC LIMIT 1',
+        [tipo, atendenteId]
+    );
 }
 
 // Iniciar conversa se nao existir ativa
@@ -760,10 +843,19 @@ module.exports = {
     gerarMensagemValores,
     gerarMenuDepartamentos,
     gerarMenuVendedores,
+    gerarMenuProfissionais,
     gerarMensagemTransferencia,
     registrarInteracao,
     registrarMensagemRecebida,
     registrarMensagemEnviada,
+    obterClientePorTelefone,
+    salvarCliente,
+    obterVendedorPorNumero,
+    obterProfissionalPorNumero,
+    registrarAtendimento,
+    atualizarAtendimentoStatus,
+    obterAtendimentoPendentePorAtendente,
+    obterAtendimentoAtivoPorAtendente,
     iniciarConversaSeNecessario,
     atualizarUltimaMensagemConversa,
     atualizarStatusConversa,

@@ -1422,6 +1422,18 @@
 
         let conversaAtual = null;
 
+        function formatNumero(numero) {
+            if (!numero) return '';
+            const limpo = numero.replace(/@c\.us$/i, '').replace(/\D/g, '');
+            if (limpo.length >= 12 && limpo.startsWith('55')) {
+                const pais = limpo.slice(0, 2);
+                const ddd = limpo.slice(2, 4);
+                const corpo = limpo.slice(4);
+                return `+${pais} ${ddd} ${corpo}`;
+            }
+            return limpo;
+        }
+
         function formatHora(dataHora) {
             if (!dataHora) return '';
             const data = new Date(dataHora);
@@ -1742,6 +1754,154 @@
             document.getElementById('vendedor-id').value = '';
         }
 
+        async function carregarProfissionais() {
+            const res = await fetch(`${API_URL}/profissionais`);
+            const profissionais = await res.json();
+
+            const lista = document.getElementById('lista-profissionais');
+            lista.innerHTML = profissionais.map(p => `
+                <div class="item">
+                    <div class="item-info">
+                        <h3>${p.nome} <span class="status-badge status-${p.ativo ? 'active' : 'inactive'}">${p.ativo ? 'Ativo' : 'Inativo'}</span></h3>
+                        <p><strong>Unidade:</strong> ${p.unidade_nome}</p>
+                        <p><strong>WhatsApp:</strong> ${p.numero}</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-small" onclick="editarProfissional(${p.id})">Editar</button>
+                        <button class="btn btn-danger btn-small" onclick="deletarProfissional(${p.id})">Excluir</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function salvarProfissional(e) {
+            e.preventDefault();
+            const id = document.getElementById('profissional-id').value;
+            const dados = {
+                unidade_id: parseInt(document.getElementById('profissional-unidade').value),
+                nome: document.getElementById('profissional-nome').value,
+                numero: document.getElementById('profissional-numero').value,
+                ativo: parseInt(document.getElementById('profissional-ativo').value),
+                ordem: parseInt(document.getElementById('profissional-ordem').value)
+            };
+
+            const url = id ? `${API_URL}/profissionais/${id}` : `${API_URL}/profissionais`;
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            });
+
+            if (res.ok) {
+                mostrarAlerta('Profissional salvo com sucesso!', 'success');
+                limparFormProfissional();
+                carregarProfissionais();
+            }
+        }
+
+        async function editarProfissional(id) {
+            const res = await fetch(`${API_URL}/profissionais/${id}`);
+            const profissional = await res.json();
+
+            document.getElementById('profissional-id').value = profissional.id;
+            document.getElementById('profissional-unidade').value = profissional.unidade_id;
+            document.getElementById('profissional-nome').value = profissional.nome;
+            document.getElementById('profissional-numero').value = profissional.numero;
+            document.getElementById('profissional-ativo').value = profissional.ativo;
+            document.getElementById('profissional-ordem').value = profissional.ordem;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deletarProfissional(id) {
+            if (!confirm('Deseja realmente excluir este profissional?')) return;
+
+            const res = await fetch(`${API_URL}/profissionais/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                mostrarAlerta('Profissional excluido com sucesso!', 'success');
+                carregarProfissionais();
+            }
+        }
+
+        function limparFormProfissional() {
+            document.getElementById('form-profissional').reset();
+            document.getElementById('profissional-id').value = '';
+        }
+
+        async function carregarClientes() {
+            const res = await fetch(`${API_URL}/clientes`);
+            const clientes = await res.json();
+
+            const lista = document.getElementById('lista-clientes');
+            lista.innerHTML = clientes.map(c => `
+                <div class="item">
+                    <div class="item-info">
+                        <h3>${c.nome}</h3>
+                        <p><strong>CPF:</strong> ${c.cpf}</p>
+                        <p><strong>Telefone:</strong> ${c.telefone}</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-small" onclick="editarCliente(${c.id})">Editar</button>
+                        <button class="btn btn-danger btn-small" onclick="deletarCliente(${c.id})">Excluir</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function salvarCliente(e) {
+            e.preventDefault();
+            const id = document.getElementById('cliente-id').value;
+            const dados = {
+                nome: document.getElementById('cliente-nome').value,
+                cpf: document.getElementById('cliente-cpf').value,
+                telefone: document.getElementById('cliente-telefone').value
+            };
+
+            const url = id ? `${API_URL}/clientes/${id}` : `${API_URL}/clientes`;
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            });
+
+            if (res.ok) {
+                mostrarAlerta('Cliente salvo com sucesso!', 'success');
+                limparFormCliente();
+                carregarClientes();
+            }
+        }
+
+        async function editarCliente(id) {
+            const res = await fetch(`${API_URL}/clientes/${id}`);
+            const cliente = await res.json();
+
+            document.getElementById('cliente-id').value = cliente.id;
+            document.getElementById('cliente-nome').value = cliente.nome;
+            document.getElementById('cliente-cpf').value = cliente.cpf;
+            document.getElementById('cliente-telefone').value = cliente.telefone;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deletarCliente(id) {
+            if (!confirm('Deseja realmente excluir este cliente?')) return;
+
+            const res = await fetch(`${API_URL}/clientes/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                mostrarAlerta('Cliente excluido com sucesso!', 'success');
+                carregarClientes();
+            }
+        }
+
+        function limparFormCliente() {
+            document.getElementById('form-cliente').reset();
+            document.getElementById('cliente-id').value = '';
+        }
+
         async function carregarValores() {
             const res = await fetch(`${API_URL}/valores`);
             const valores = await res.json();
@@ -1826,6 +1986,12 @@
                 case 'vendedores':
                     carregarVendedores();
                     break;
+                case 'profissionais':
+                    carregarProfissionais();
+                    break;
+                case 'clientes':
+                    carregarClientes();
+                    break;
                 case 'valores':
                     carregarValores();
                     break;
@@ -1843,6 +2009,8 @@
 
         window.onload = () => {
             carregarUnidades();
+            carregarProfissionais();
+            carregarClientes();
             carregarConfiguracoes();
             atualizarStatusBot();
             setInterval(atualizarStatusBot, 3000);

@@ -71,11 +71,80 @@ recarregarConfiguracoes().then(() => {
 function start(client) {
   async function enviarMensagem(userId, mensagem, contexto) {
     try {
-      const chatId = toChatId(userId);     await client.sendText(chatId, mensagem);
+      const chatId = toChatId(userId);
+      await client.sendText(chatId, mensagem);
       botIntegration.registrarMensagemEnviada(userId, mensagem, contexto);
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
     }
+  }
+
+  async function iniciarColetaAtendimento(userId, state) {
+    const telefone = normalizarNumero(userId);
+    const cliente = await botIntegration.obterClientePorTelefone(telefone);
+
+    if (!cliente || !cliente.cpf) {
+      state.menu = 'coleta_cpf';
+      state.tempCpf = cliente ? cliente.cpf : null;
+      await enviarMensagem(userId, 'Para continuar, informe seu CPF (apenas numeros).');
+      return;
+    }
+
+    if (!cliente.nome) {
+      state.menu = 'coleta_nome';
+      state.tempCpf = cliente.cpf;
+      await enviarMensagem(userId, 'Informe seu nome completo.');
+      return;
+    }
+
+    state.cliente = cliente;
+    state.menu = 'coleta_assunto';
+    await enviarMensagem(userId, 'Qual o assunto do atendimento?');
+  }
+
+  async function enviarSolicitacaoAtendimento(userId, state, assunto) {
+    const telefone = normalizarNumero(userId);
+    const cliente = state.cliente || {};
+    const atendente = state.pendingTransfer;
+    if (!atendente) return;
+
+    const unidade = config.unidades.find(u => u.id === atendente.unidadeId);
+    const atendimentoId = await botIntegration.registrarAtendimento({
+      user_id: userId,
+      unidade_id: atendente.unidadeId,
+      tipo_atendente: atendente.tipo,
+      atendente_id: atendente.id,
+      atendente_nome: atendente.nome,
+      cliente_nome: cliente.nome || 'Nao informado',
+      cliente_cpf: cliente.cpf || 'Nao informado',
+      cliente_telefone: telefone,
+      assunto: assunto,
+      status: 'pendente'
+    });
+
+    const msgAtendente = `Novo atendimento solicitado.\n` +
+      `Cliente: ${cliente.nome || 'Nao informado'}\n` +
+      `CPF: ${cliente.cpf || 'Nao informado'}\n` +
+      `Telefone: ${telefone}\n` +
+      `Assunto: ${assunto}\n` +
+      `Unidade: ${unidade ? unidade.nome : 'Unidade'}\n\n` +
+      `Digite sim** para aceitar ou recusar** para recusar.`;
+
+    await enviarMensagem(atendente.numero, msgAtendente, {
+      tipo: 'solicitacao_atendimento',
+      atendimento_id: atendimentoId
+    });
+    await enviarMensagem(userId, `Sua solicitacao foi enviada para ${atendente.nome}. Aguarde a confirmacao.`);
+
+    botIntegration.registrarInteracao(userId, 'solicitacao_atendimento', {
+      unidade: unidade ? unidade.nome : null,
+      atendente: atendente.nome,
+      tipo: atendente.tipo,
+      assunto
+    });
+
+    state.menu = 'aguardando_aceite';
+    state.atendimentoId = atendimentoId;
   }
 
   console.log('✅ Bot iniciado com sucesso!');
@@ -102,6 +171,85 @@ function start(client) {
         const userId = message.from;
         const userMessage = message.body.trim();
         const userInput = userMessage.toLowerCase();
+
+        const fromNumber = normalizarNumero(userId);
+        const vendedorAtendente = await botIntegration.obterVendedorPorNumero(fromNumber);
+        const profissionalAtendente = vendedorAtendente ? null : await botIntegration.obterProfissionalPorNumero(fromNumber);
+
+        if (vendedorAtendente || profissionalAtendente) {
+          const atendente = vendedorAtendente || profissionalAtendente;
+          const tipoAtendente = vendedorAtendente ? 'vendedor' : 'profissional';
+
+          if (userInput === 'sim**') {
+            const atendimento = await botIntegration.obterAtendimentoPendentePorAtendente(tipoAtendente, atendente.id);
+            if (!atendimento) {
+              await enviarMensagem(userId, 'Nenhum atendimento pendente no momento.');
+              return;
+            }
+
+            await botIntegration.atualizarAtendimentoStatus(atendimento.id, 'aceito');
+            await botIntegration.atualizarStatusConversa(atendimento.user_id, 'em_atendimento', atendimento.unidade_id, null);
+
+            if (!userStates[atendimento.user_id]) {
+              userStates[atendimento.user_id] = { menu: 'em_atendimento', primeiraMsg: false };
+            } else {
+              userStates[atendimento.user_id].menu = 'em_atendimento';
+            }
+
+            await enviarMensagem(atendimento.user_id, `Atendimento iniciado com ${atendente.nome}. Aguarde a resposta.`);
+            await enviarMensagem(userId, 'Atendimento aceito. Digite sair** para encerrar.');
+            return;
+          }
+
+          if (userInput === 'recusar**') {
+            const atendimento = await botIntegration.obterAtendimentoPendentePorAtendente(tipoAtendente, atendente.id);
+            if (!atendimento) {
+              await enviarMensagem(userId, 'Nenhum atendimento pendente no momento.');
+              return;
+            }
+
+            await botIntegration.atualizarAtendimentoStatus(atendimento.id, 'recusado');
+            await botIntegration.atualizarStatusConversa(atendimento.user_id, 'abandonada', atendimento.unidade_id, null);
+
+            const unidade = config.unidades.find(u => u.id === atendimento.unidade_id);
+            if (unidade) {
+              if (tipoAtendente === 'vendedor') {
+                const vendedores = config.vendedores[unidade.id] || [];
+                await enviarMensagem(atendimento.user_id, 'Atendimento recusado. Escolha outro vendedor.');
+                await enviarMensagem(atendimento.user_id, botIntegration.gerarMenuVendedores(unidade, vendedores));
+                userStates[atendimento.user_id] = { menu: 'vendedores', primeiraMsg: false };
+              } else {
+                const profissionais = config.profissionais[unidade.id] || [];
+                await enviarMensagem(atendimento.user_id, 'Atendimento recusado. Escolha outro profissional.');
+                await enviarMensagem(atendimento.user_id, botIntegration.gerarMenuProfissionais(unidade, profissionais));
+                userStates[atendimento.user_id] = { menu: 'profissionais', primeiraMsg: false };
+              }
+            } else {
+              await enviarMensagem(atendimento.user_id, 'Atendimento recusado. Digite *menu* para voltar ao inicio.');
+            }
+
+            await enviarMensagem(userId, 'Atendimento recusado.');
+            return;
+          }
+
+          if (userInput === 'sair**') {
+            const atendimento = await botIntegration.obterAtendimentoAtivoPorAtendente(tipoAtendente, atendente.id);
+            if (!atendimento) {
+              await enviarMensagem(userId, 'Nenhum atendimento ativo no momento.');
+              return;
+            }
+
+            await botIntegration.atualizarAtendimentoStatus(atendimento.id, 'encerrado');
+            await botIntegration.atualizarStatusConversa(atendimento.user_id, 'finalizada', atendimento.unidade_id, null);
+
+            await enviarMensagem(atendimento.user_id, `Atendimento encerrado por ${atendente.nome}. Digite *menu* para voltar ao inicio.`);
+            await enviarMensagem(userId, 'Atendimento encerrado.');
+            return;
+          }
+
+          await enviarMensagem(userId, 'Comando invalido. Use sim**, recusar** ou sair**.');
+          return;
+        }
 
         // Inicializar estado do usuário se não existir
         if (!userStates[userId]) {
@@ -135,6 +283,8 @@ function start(client) {
         // === MENU INICIAL - COMANDO ===
         if (userInput === 'menu' || userInput === 'inicio') {
           await botIntegration.marcarFilaAbandonada(userId, 'menu');
+          state.pendingTransfer = null;
+          state.atendimentoId = null;
           state.menu = 'inicial';
           state.unidadeId = null;
           const menuPrincipal = config.config.mensagem_menu_principal || '📋 Menu Principal';
@@ -143,7 +293,48 @@ function start(client) {
           return;
         }
 
-        // === ESCOLHA DA UNIDADE ===
+
+        // === COLETA DE DADOS PARA ATENDIMENTO ===
+        if (state.menu === 'coleta_cpf') {
+          const cpf = userMessage.replace(/\D/g, '');
+          if (cpf.length < 11) {
+            await enviarMensagem(userId, 'CPF invalido. Digite apenas numeros (11 digitos).');
+            return;
+          }
+          state.tempCpf = cpf;
+          state.menu = 'coleta_nome';
+          await enviarMensagem(userId, 'Informe seu nome completo.');
+          return;
+        }
+
+        if (state.menu === 'coleta_nome') {
+          const nome = userMessage.trim();
+          if (nome.length < 3) {
+            await enviarMensagem(userId, 'Nome invalido. Digite novamente.');
+            return;
+          }
+          const telefone = normalizarNumero(userId);
+          await botIntegration.salvarCliente(nome, state.tempCpf || '00000000000', telefone);
+          state.cliente = { nome, cpf: state.tempCpf, telefone };
+          state.menu = 'coleta_assunto';
+          await enviarMensagem(userId, 'Qual o assunto do atendimento?');
+          return;
+        }
+
+        if (state.menu === 'coleta_assunto') {
+          const assunto = userMessage.trim();
+          if (assunto.length < 2) {
+            await enviarMensagem(userId, 'Informe um assunto valido.');
+            return;
+          }
+          await enviarSolicitacaoAtendimento(userId, state, assunto);
+          return;
+        }
+
+        if (state.menu === 'aguardando_aceite') {
+          await enviarMensagem(userId, 'Estamos aguardando o atendente aceitar sua solicitacao. Aguarde um momento.');
+          return;
+        }        // === ESCOLHA DA UNIDADE ===
         if (state.menu === 'inicial' && /^[1-9]$/.test(userInput)) {
           const index = parseInt(userInput) - 1;
           if (index < config.unidades.length) {
@@ -161,47 +352,62 @@ function start(client) {
           }
         }
 
-        // === OPÇÕES DENTRO DA UNIDADE ===
         else if (state.menu === 'unidade') {
           const unidade = config.unidades.find(u => u.id === state.unidadeId);
-          
-          // Opção 1: Endereço
+
+          // Opcao 1: Endereco
           if (userInput === '1') {
             const mensagem = botIntegration.gerarMensagemEndereco(unidade);
             await enviarMensagem(userId, mensagem);
             botIntegration.registrarInteracao(userId, 'consulta_endereco', { unidade: unidade.nome });
+            state.menu = 'endereco';
           }
-          
-          // Opção 2: Valores
+
+          // Opcao 2: Valores
           else if (userInput === '2') {
             const valores = config.valores[unidade.id] || [];
             const mensagem = botIntegration.gerarMensagemValores(unidade, valores);
             await enviarMensagem(userId, mensagem);
             botIntegration.registrarInteracao(userId, 'consulta_valores', { unidade: unidade.nome });
+            state.menu = 'valores';
           }
-          
-          // Opção 3: Falar com Atendente
+
+          // Opcao 3: Vendas
           else if (userInput === '3') {
+            state.menu = 'vendedores';
+            const vendedores = config.vendedores[unidade.id] || [];
+            const mensagem = botIntegration.gerarMenuVendedores(unidade, vendedores);
+            await enviarMensagem(userId, mensagem);
+          }
+
+          // Opcao 4: Profissionais
+          else if (userInput === '4') {
+            state.menu = 'profissionais';
+            const profissionais = config.profissionais[unidade.id] || [];
+            const mensagem = botIntegration.gerarMenuProfissionais(unidade, profissionais);
+            await enviarMensagem(userId, mensagem);
+          }
+
+          // Opcao 5: Departamentos
+          else if (userInput === '5') {
             state.menu = 'departamentos';
             const departamentos = config.departamentos[unidade.id] || [];
             const mensagem = botIntegration.gerarMenuDepartamentos(unidade, departamentos);
             await enviarMensagem(userId, mensagem);
           }
-          
-          // Opção 0: Voltar
+
+          // Opcao 0: Voltar
           else if (userInput === '0') {
             state.menu = 'inicial';
             state.unidadeId = null;
             const mensagem = botIntegration.gerarMenuUnidades(config.unidades);
             await enviarMensagem(userId, mensagem);
           }
-          
+
           else {
-            await enviarMensagem(userId, '❓ Opção inválida. Digite um número válido ou *0* para voltar.');
+            await enviarMensagem(userId, 'Opcao invalida. Digite um numero valido ou *0* para voltar.');
           }
         }
-
-
         // === MENU DE INFORMACOES (ENDERECO/VALORES) ===
         else if (state.menu === 'endereco' || state.menu === 'valores') {
           const unidade = config.unidades.find(u => u.id === state.unidadeId);
